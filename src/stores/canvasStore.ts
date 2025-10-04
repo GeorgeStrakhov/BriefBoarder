@@ -11,6 +11,7 @@ export interface CanvasImage {
   uploading?: boolean;
   isGenerating?: boolean;
   isUpscaling?: boolean;
+  isRemovingBackground?: boolean;
   x: number;
   y: number;
   rotation: number;

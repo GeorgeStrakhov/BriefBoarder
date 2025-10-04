@@ -11,13 +11,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MoreVertical, Crop, ZoomIn, ZoomOut, Download, Trash2, Undo2, Redo2, Sparkles, ArrowUpCircle, FileDown, Loader2, Check } from 'lucide-react';
+import { MoreVertical, Crop, ZoomIn, ZoomOut, Download, Trash2, Undo2, Redo2, Sparkles, ArrowUpCircle, FileDown, Loader2, Check, Eraser } from 'lucide-react';
 import { useCanvasStore, setImageRef, getAllImageRefs } from '@/stores/canvasStore';
 import { toast } from 'sonner';
 import CropDialog from './CropDialog';
 import DeleteImageDialog from './DeleteImageDialog';
 
-function TransformableImage({ image, width, height, x, y, rotation, scaleX, scaleY, isSelected, onSelect, onDragEnd, onTransformEnd, nodeRef, isUpscaling }: any) {
+function TransformableImage({ image, width, height, x, y, rotation, scaleX, scaleY, isSelected, onSelect, onDragEnd, onTransformEnd, nodeRef, isUpscaling, isRemovingBackground }: any) {
   const imageRef = useRef<Konva.Image>(null);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ function TransformableImage({ image, width, height, x, y, rotation, scaleX, scal
       onTransformEnd={onTransformEnd}
       stroke={isSelected ? '#0066ff' : undefined}
       strokeWidth={isSelected ? 2 : 0}
-      opacity={isUpscaling ? 0.5 : 1}
+      opacity={isUpscaling || isRemovingBackground ? 0.5 : 1}
     />
   );
 }
@@ -401,6 +401,60 @@ export default function Canvas() {
       console.error('Upscale error:', error);
       updateImage(imageIndex, { isUpscaling: false });
       toast.error('Failed to upscale image');
+    }
+  };
+
+  const handleRemoveBackground = async () => {
+    if (selectedIndices.length !== 1) return;
+
+    const imageIndex = selectedIndices[0];
+    const imageData = images[imageIndex];
+    if (!imageData?.s3Url) return;
+
+    // Check if already removing background
+    if (imageData.isRemovingBackground) {
+      toast.error('Background removal already in progress');
+      return;
+    }
+
+    // Set removing background state
+    updateImage(imageIndex, { isRemovingBackground: true });
+
+    try {
+      const response = await fetch('/api/remove-background', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageUrl: imageData.s3Url,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Load the image with removed background
+        const processedImg = new window.Image();
+        processedImg.crossOrigin = 'anonymous';
+        processedImg.src = data.imageUrl;
+        processedImg.onload = () => {
+          // Update image with processed version, keeping transforms
+          updateImage(imageIndex, {
+            image: processedImg,
+            s3Url: data.imageUrl,
+            s3Key: data.key,
+            isRemovingBackground: false,
+            // Keep existing transform properties
+          });
+          toast.success('Background removed successfully!');
+        };
+      } else {
+        updateImage(imageIndex, { isRemovingBackground: false });
+        toast.error(data.error || 'Failed to remove background');
+      }
+    } catch (error) {
+      console.error('Remove background error:', error);
+      updateImage(imageIndex, { isRemovingBackground: false });
+      toast.error('Failed to remove background');
     }
   };
 
@@ -933,6 +987,7 @@ export default function Canvas() {
                 onTransformEnd={(e: any) => handleImageTransformEnd(index, e)}
                 nodeRef={(node: Konva.Image) => setImageRef(index, node)}
                 isUpscaling={imgData.isUpscaling}
+                isRemovingBackground={imgData.isRemovingBackground}
               />
             ))}
           <Transformer
@@ -1004,6 +1059,10 @@ export default function Canvas() {
                   <DropdownMenuItem onClick={handleUpscale}>
                     <ArrowUpCircle className="h-4 w-4 mr-2" />
                     Upscale
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleRemoveBackground}>
+                    <Eraser className="h-4 w-4 mr-2" />
+                    Remove Background
                   </DropdownMenuItem>
                 </>
               )}

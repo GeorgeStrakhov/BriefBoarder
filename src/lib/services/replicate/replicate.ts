@@ -368,3 +368,62 @@ export async function upscaleImage(
     );
   }
 }
+
+// Background removal
+export interface RemoveBackgroundOptions {
+  imageUrl: string;
+  folder?: string;
+}
+
+export interface RemoveBackgroundResult {
+  imageUrl: string;
+  key: string;
+  size: number;
+}
+
+export async function removeBackground(
+  options: RemoveBackgroundOptions,
+): Promise<RemoveBackgroundResult> {
+  const {
+    imageUrl,
+    folder = "background-removed",
+  } = options;
+
+  try {
+    const input = {
+      image: imageUrl,
+      content_moderation: false,
+      preserve_partial_alpha: false,
+    };
+
+    const output = await replicate.run("bria/remove-background", { input });
+
+    if (!output || typeof output !== "object" || !("url" in output)) {
+      throw new Error("Invalid response from Replicate API");
+    }
+
+    const replicateUrl = (output as { url(): string }).url();
+    if (!replicateUrl) {
+      throw new Error("No image URL returned from Replicate");
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const filename = `bg-removed-${timestamp}.png`;
+
+    const uploadResult = await uploadFromUrl(replicateUrl, filename, {
+      folder,
+      contentType: "image/png",
+    });
+
+    return {
+      imageUrl: uploadResult.publicUrl,
+      key: uploadResult.key,
+      size: uploadResult.size,
+    };
+  } catch (error) {
+    console.error("Background removal error:", error);
+    throw new Error(
+      `Failed to remove background: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
+  }
+}
