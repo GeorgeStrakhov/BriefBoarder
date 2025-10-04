@@ -11,13 +11,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MoreVertical, Crop, ZoomIn, ZoomOut, Download, Trash2, Undo2, Redo2, Sparkles, ArrowUpCircle } from 'lucide-react';
+import { MoreVertical, Crop, ZoomIn, ZoomOut, Download, Trash2, Undo2, Redo2, Sparkles, ArrowUpCircle, FileDown, Loader2, Check } from 'lucide-react';
 import { useCanvasStore, setImageRef, getAllImageRefs } from '@/stores/canvasStore';
 import { toast } from 'sonner';
 import CropDialog from './CropDialog';
 import DeleteImageDialog from './DeleteImageDialog';
 
-function TransformableImage({ image, width, height, x, y, rotation, scaleX, scaleY, isSelected, onSelect, onPositionUpdate, onDragEnd, onTransformEnd, nodeRef, isUpscaling }: any) {
+function TransformableImage({ image, width, height, x, y, rotation, scaleX, scaleY, isSelected, onSelect, onDragEnd, onTransformEnd, nodeRef, isUpscaling }: any) {
   const imageRef = useRef<Konva.Image>(null);
 
   useEffect(() => {
@@ -25,29 +25,6 @@ function TransformableImage({ image, width, height, x, y, rotation, scaleX, scal
       nodeRef(imageRef.current);
     }
   }, [nodeRef]);
-
-  useEffect(() => {
-    const updatePosition = () => {
-      if (imageRef.current && onPositionUpdate) {
-        const node = imageRef.current;
-        onPositionUpdate({
-          x: node.x(),
-          y: node.y(),
-          width: node.width() * node.scaleX(),
-          height: node.height() * node.scaleY(),
-        });
-      }
-    };
-
-    if (imageRef.current && isSelected) {
-      updatePosition();
-      const node = imageRef.current;
-      node.on('dragmove transform', updatePosition);
-      return () => {
-        node.off('dragmove transform', updatePosition);
-      };
-    }
-  }, [isSelected, onPositionUpdate]);
 
   return (
     <KonvaImage
@@ -96,12 +73,12 @@ export default function Canvas() {
 
   // Local UI state
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
-  const [selectedImagePosition, setSelectedImagePosition] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const [showCropDialog, setShowCropDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [cropImageIndex, setCropImageIndex] = useState<number | null>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
+  const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -171,6 +148,7 @@ export default function Canvas() {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const img = new window.Image();
+        img.crossOrigin = 'anonymous';
         img.src = event.target?.result as string;
         img.onload = async () => {
           const MAX_SIZE = 500;
@@ -354,8 +332,7 @@ export default function Canvas() {
     if (!imageData?.s3Url) return;
 
     try {
-      // Use image proxy to avoid CORS issues
-      const response = await fetch(`/api/image-proxy?url=${encodeURIComponent(imageData.s3Url)}`);
+      const response = await fetch(imageData.s3Url);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
 
@@ -368,6 +345,7 @@ export default function Canvas() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Download failed:', error);
+      toast.error('Failed to download image');
     }
   };
 
@@ -402,6 +380,7 @@ export default function Canvas() {
       if (response.ok) {
         // Load the upscaled image
         const upscaledImg = new window.Image();
+        upscaledImg.crossOrigin = 'anonymous';
         upscaledImg.src = data.imageUrl;
         upscaledImg.onload = () => {
           // Update image with upscaled version, keeping transforms
@@ -425,6 +404,66 @@ export default function Canvas() {
     }
   };
 
+  const handleDownloadBoard = async (quality: number) => {
+    if (!stageRef.current || images.length === 0) {
+      toast.error('No images to download');
+      return;
+    }
+
+    try {
+      const stage = stageRef.current;
+      const imageRefsMap = getAllImageRefs();
+
+      // Calculate bounding box of all images (accounting for rotation)
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+      images.forEach((_img, index) => {
+        const node = imageRefsMap.get(index);
+        if (!node) return;
+
+        // Use getClientRect with relativeTo stage to get correct coordinates
+        const rect = node.getClientRect({ relativeTo: stage });
+
+        minX = Math.min(minX, rect.x);
+        minY = Math.min(minY, rect.y);
+        maxX = Math.max(maxX, rect.x + rect.width);
+        maxY = Math.max(maxY, rect.y + rect.height);
+      });
+
+      const width = maxX - minX;
+      const height = maxY - minY;
+
+      // Add some padding
+      const padding = 50;
+      minX -= padding;
+      minY -= padding;
+      const exportWidth = width + (padding * 2);
+      const exportHeight = height + (padding * 2);
+
+      // Export with specified quality
+      const dataURL = stage.toDataURL({
+        x: minX,
+        y: minY,
+        width: exportWidth,
+        height: exportHeight,
+        pixelRatio: quality,
+      });
+
+      // Trigger download
+      const link = document.createElement('a');
+      link.download = `moodboard-${quality}x.png`;
+      link.href = dataURL;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success(`Board downloaded at ${quality}x quality!`);
+    } catch (error) {
+      console.error('Download board error:', error);
+      toast.error('Failed to download board');
+    }
+  };
+
   const handleSaveCrop = async (croppedBlob: Blob, completedCrop: PixelCrop) => {
     if (cropImageIndex === null) return;
 
@@ -442,6 +481,7 @@ export default function Canvas() {
     if (response.ok) {
       // Load the new cropped image
       const newImg = new window.Image();
+      newImg.crossOrigin = 'anonymous';
       newImg.src = data.s3Url;
       newImg.onload = () => {
         // Update image with new cropped version
@@ -514,6 +554,7 @@ export default function Canvas() {
       const y = centerY + offsetY - height / 2;
 
       const placeholderImage = new window.Image();
+      placeholderImage.crossOrigin = 'anonymous';
       placeholderImage.src = placeholderPath;
 
       placeholderImage.onload = () => {
@@ -543,6 +584,7 @@ export default function Canvas() {
 
             if (response.ok) {
               const editedImg = new window.Image();
+              editedImg.crossOrigin = 'anonymous';
               editedImg.src = data.imageUrl;
               editedImg.onload = () => {
                 // Use actual image dimensions, scale to max 500px
@@ -601,6 +643,7 @@ export default function Canvas() {
 
     // Load placeholder PNG
     const placeholderImage = new window.Image();
+    placeholderImage.crossOrigin = 'anonymous';
     placeholderImage.src = placeholderPath;
 
     placeholderImage.onload = () => {
@@ -632,6 +675,7 @@ export default function Canvas() {
           if (response.ok) {
             // Load the generated image
             const generatedImg = new window.Image();
+            generatedImg.crossOrigin = 'anonymous';
             generatedImg.src = data.imageUrl;
             generatedImg.onload = () => {
               // Use actual image dimensions, scale to max 500px
@@ -677,21 +721,23 @@ export default function Canvas() {
   const getSelectionBounds = () => {
     if (selectedIndices.length === 0) return null;
 
+    const imageRefsMap = getAllImageRefs();
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
     selectedIndices.forEach(index => {
-      const img = images[index];
-      if (!img) return;
+      const node = imageRefsMap.get(index);
+      if (!node) return;
 
-      const x = img.x;
-      const y = img.y;
-      const width = img.width * img.scaleX;
-      const height = img.height * img.scaleY;
+      // Use getClientRect with relativeTo stage to get correct coordinates
+      const stage = node.getStage();
+      if (!stage) return;
 
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + width);
-      maxY = Math.max(maxY, y + height);
+      const rect = node.getClientRect({ relativeTo: stage });
+
+      minX = Math.min(minX, rect.x);
+      minY = Math.min(minY, rect.y);
+      maxX = Math.max(maxX, rect.x + rect.width);
+      maxY = Math.max(maxY, rect.y + rect.height);
     });
 
     return {
@@ -711,23 +757,63 @@ export default function Canvas() {
       onDragOver={handleDragOver}
       style={{ width: '100%', height: '100%', background: '#f0f0f0', position: 'relative' }}
     >
-      {/* Save status indicator */}
+      {/* Top right controls */}
       <div
         style={{
           position: 'absolute',
           top: '20px',
           right: '20px',
-          background: 'white',
-          padding: '8px 16px',
-          borderRadius: '4px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          fontSize: '14px',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
           zIndex: 1000,
         }}
       >
-        {saveStatus === 'saving' && '💾 Saving...'}
-        {saveStatus === 'saved' && '✓ Saved'}
-        {saveStatus === 'unsaved' && '○ Unsaved changes'}
+        {/* Save status indicator */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            opacity: 0.5,
+          }}
+          title={saveStatus === 'saved' ? 'Saved' : 'Saving...'}
+        >
+          {(saveStatus === 'saving' || saveStatus === 'unsaved') && <Loader2 className="h-4 w-4 animate-spin" />}
+          {saveStatus === 'saved' && <Check className="h-4 w-4" />}
+        </div>
+
+        {/* Download board button */}
+        {images.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  opacity: 0.5,
+                }}
+                title="Download Board"
+              >
+                <FileDown className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleDownloadBoard(1)}>
+                1x - Screen Quality (fast)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDownloadBoard(2)}>
+                2x - High Quality (recommended)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDownloadBoard(4)}>
+                4x - Print Quality (large file)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Undo/Redo controls */}
@@ -805,6 +891,7 @@ export default function Canvas() {
         </Button>
       </div>
       <Stage
+        ref={stageRef}
         width={dimensions.width}
         height={dimensions.height}
         scaleX={zoom}
@@ -842,7 +929,6 @@ export default function Canvas() {
                 scaleY={imgData.scaleY}
                 isSelected={selectedIndices.includes(index)}
                 onSelect={(e: any) => handleSelect(index, e)}
-                onPositionUpdate={selectedIndices.length === 1 && selectedIndices[0] === index ? setSelectedImagePosition : undefined}
                 onDragEnd={(e: any) => handleImageDragEnd(index, e)}
                 onTransformEnd={(e: any) => handleImageTransformEnd(index, e)}
                 nodeRef={(node: Konva.Image) => setImageRef(index, node)}
@@ -852,8 +938,7 @@ export default function Canvas() {
           <Transformer
             ref={transformerRef}
             keepRatio={true}
-            rotationSnaps={[0, 90, 180, 270]}
-            rotationSnapTolerance={60}
+            enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
             boundBoxFunc={(oldBox, newBox) => {
               if (newBox.width < 5 || newBox.height < 5) {
                 return oldBox;

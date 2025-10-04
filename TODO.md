@@ -1,6 +1,4 @@
-- add upscaling and the list of upscaling models
-- download the full moodboard button
-- add image editing
-- add prompt upsampling
+- add styles (defined as prompt and optional reference images): random, empty or specific
+- add prompt upsampling with LLM (using style reference)
 - add smarts to image editing (e.g. add logo)
-- add styles (defined as )
+- add magic button top left: just generates an advert based on the style and brief

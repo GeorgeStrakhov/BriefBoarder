@@ -56,6 +56,10 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 - Public CDN endpoint defined in the .env
 - Supports upload from URL or data URI
 - Handles automatic content-type detection
+- **CORS Configuration Required**: R2 bucket must have CORS enabled for canvas exports
+  - In Cloudflare dashboard: R2 → Select bucket → Settings → CORS Policy → Add CORS policy
+  - Required config: `AllowedOrigins: ["*"]`, `AllowedMethods: ["GET", "HEAD"]`, `AllowedHeaders: ["*"]`
+  - All images loaded with `crossOrigin = 'anonymous'` attribute to enable canvas export
 
 **Database Schema (`src/db/schema/briefs.ts`)**:
 - Single `briefs` table with UUID primary key
@@ -67,10 +71,10 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 
 - `/api/generate` - POST: Generate new images from text prompts
 - `/api/edit` - POST: Edit existing images with AI (multi-image support)
+- `/api/upscale` - POST: Upscale images using AI models
 - `/api/briefs` - GET/POST: List and create briefs
 - `/api/briefs/[uuid]` - GET/PATCH: Load and update brief canvas state
 - `/api/upload` - POST: Upload images from client to S3
-- `/api/image-proxy` - Proxy external images through Next.js
 
 ### Canvas Components
 

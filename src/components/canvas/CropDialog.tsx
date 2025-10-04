@@ -209,9 +209,10 @@ export default function CropDialog({
             >
               <img
                 ref={cropImageRef}
-                src={`/api/image-proxy?url=${encodeURIComponent(imageUrl)}`}
+                src={imageUrl}
                 alt="Crop preview"
                 style={{ maxHeight: '500px', maxWidth: '100%' }}
+                crossOrigin="anonymous"
               />
             </ReactCrop>
           )}

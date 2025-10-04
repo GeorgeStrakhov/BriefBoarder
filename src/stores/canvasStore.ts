@@ -73,6 +73,7 @@ const deserializeImages = async (serialized: SerializableImageState[]): Promise<
     serialized.map(async (data) => {
       return new Promise<CanvasImage>((resolve, reject) => {
         const img = new window.Image();
+        img.crossOrigin = 'anonymous';
         img.src = data.s3Url || '';
         img.onload = () => {
           resolve({
@@ -217,6 +218,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
           brief.canvasState.images.map(async (imgData: any, index: number) => {
             return new Promise<CanvasImage>((resolve) => {
               const img = new window.Image();
+              img.crossOrigin = 'anonymous';
               img.src = imgData.s3Url;
               img.onload = () => {
                 resolve({
