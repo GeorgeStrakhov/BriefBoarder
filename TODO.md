@@ -1,0 +1,6 @@
+- add upscaling and the list of upscaling models
+- download the full moodboard button
+- add image editing
+- add prompt upsampling
+- add smarts to image editing (e.g. add logo)
+- add styles (defined as )
