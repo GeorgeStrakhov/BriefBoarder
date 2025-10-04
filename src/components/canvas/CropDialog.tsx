@@ -120,32 +120,28 @@ export default function CropDialog({
   const handleAspectRatioChange = (newAspectRatio: 'free' | 'square' | 'portrait' | 'landscape') => {
     setCropAspectRatio(newAspectRatio);
 
-    // Update crop to match new aspect ratio immediately
+    // Update crop to match new aspect ratio while maintaining position
     if (newAspectRatio !== 'free' && cropImageRef.current) {
       const aspect = newAspectRatio === 'square' ? 1 : newAspectRatio === 'portrait' ? 9 / 16 : 16 / 9;
 
       const { width, height } = cropImageRef.current;
 
-      // Use react-image-crop helpers to create proper aspect crop
-      const newCrop = centerCrop(
-        makeAspectCrop(
-          {
-            unit: '%',
-            width: 50,
-          },
-          aspect,
-          width,
-          height
-        ),
+      // Use current crop dimensions and position, just adjust aspect
+      const newCrop = makeAspectCrop(
+        {
+          unit: crop.unit,
+          width: crop.width,
+          x: crop.x,
+          y: crop.y,
+        },
+        aspect,
         width,
         height
       );
 
       setCrop(newCrop);
-    } else if (newAspectRatio === 'free') {
-      // Reset to default square crop for free mode
-      setCrop({ unit: '%', width: 50, height: 50, x: 25, y: 25 });
     }
+    // For free mode, keep the current crop as-is (no reset needed)
   };
 
   return (
