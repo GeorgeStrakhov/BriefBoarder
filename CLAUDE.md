@@ -14,6 +14,10 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 - `pnpm build` - Build for production with Turbopack
 - `pnpm start` - Start production server
 - `pnpm lint` - Run ESLint
+- `pnpm format` - Format code with Prettier and auto-fix ESLint issues
+- `pnpm format:check` - Check code formatting without making changes
+
+**Note**: Only run `pnpm format` and `pnpm build` when explicitly requested by the user. Do not run these proactively.
 
 ### Database
 
@@ -38,7 +42,7 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 - Konva.Image refs stored outside Zustand (in `imageRefsMap`) to prevent re-render loops
 - History system uses serializable snapshots (excludes HTMLImageElement objects)
 - Images must have S3 URLs before being included in history/saves
-- zIndex managed explicitly for layer ordering
+- Two-tier zIndex system: regular images use 0-9999, reactions/post-its use 10000+ (ensures reactions always appear above images while maintaining bring-to-front within each category)
 
 ### AI Services Layer
 
