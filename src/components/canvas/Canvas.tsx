@@ -1136,7 +1136,7 @@ export default function Canvas() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Describe the image you want to generate..."
-            rows={2}
+            className="resize-none h-[68px]"
             style={{ flex: 1 }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -1149,7 +1149,7 @@ export default function Canvas() {
             onClick={handleGenerateImage}
             disabled={!prompt.trim()}
             size="icon"
-            className="h-[68px] w-[68px]"
+            className="h-[80px] w-[80px] flex-shrink-0"
           >
             <Sparkles className="h-5 w-5" />
           </Button>
