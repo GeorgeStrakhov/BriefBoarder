@@ -309,13 +309,13 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
             <div className="border-t border-gray-200 pt-4 mt-4">
               <details open>
                 <summary className="text-sm font-medium text-gray-700 mb-3 cursor-pointer">
-                  📋 Reactions & Notes
+                  Reactions & Notes
                 </summary>
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs font-medium text-gray-500 mb-2 block">Stickers</label>
                     <div className="grid grid-cols-5 gap-2">
-                      {['🎉', '❤️', '👍', '🔥', '✨', '👏', '💡', '⭐', '✅', '🚀'].map((emoji) => (
+                      {['❤️', '👍', '👎', '🔥', '✨', '❓', '❌', '🤔', '⭐', '📝'].map((emoji) => (
                         <div
                           key={emoji}
                           draggable="true"
@@ -329,9 +329,6 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
                       ))}
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 italic">
-                    Use the sticky note button in the bottom-left corner to add post-it notes
-                  </p>
                 </div>
               </details>
             </div>
@@ -340,7 +337,7 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
             <div className="border-t border-gray-200 pt-4 mt-4">
               <details open>
                 <summary className="text-sm font-medium text-gray-700 mb-3 cursor-pointer">
-                  🏷️ Assets
+                  Assets
                 </summary>
                 <div className="grid grid-cols-2 gap-2">
                   {[

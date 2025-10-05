@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MoreVertical, Crop, ZoomIn, ZoomOut, Download, Trash2, Undo2, Redo2, Sparkles, ArrowUpCircle, FileDown, Loader2, Check, Eraser, Link, Eye, EyeOff, StickyNote } from 'lucide-react';
+import { MoreVertical, Crop, ZoomIn, ZoomOut, Download, Trash2, Undo2, Redo2, Sparkles, ArrowUpCircle, FileDown, Loader2, Check, Eraser, Link, Eye, EyeOff } from 'lucide-react';
 import { useCanvasStore, setImageRef, getAllImageRefs } from '@/stores/canvasStore';
 import { toast } from 'sonner';
 import CropDialog from './CropDialog';
@@ -81,6 +81,7 @@ export default function Canvas() {
   const [prompt, setPrompt] = useState('');
   const [cropImageIndex, setCropImageIndex] = useState<number | null>(null);
   const [postItImageIndex, setPostItImageIndex] = useState<number | null>(null);
+  const [postItDropPosition, setPostItDropPosition] = useState<{ x: number; y: number } | null>(null);
   const [showReactions, setShowReactions] = useState(true);
   const transformerRef = useRef<Konva.Transformer>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -154,6 +155,26 @@ export default function Canvas() {
     const assetUrl = e.dataTransfer.getData('asset');
 
     if (stickerEmoji) {
+      // Special handling for memo emoji - open post-it dialog
+      if (stickerEmoji === '📝') {
+        if (!stageRef.current || !containerRef.current) return;
+
+        // Get drop position relative to container
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const x = e.clientX - containerRect.left;
+        const y = e.clientY - containerRect.top;
+
+        // Transform to stage coordinates (accounting for zoom and pan)
+        const stage = stageRef.current;
+        const stageX = (x - stage.x()) / zoom;
+        const stageY = (y - stage.y()) / zoom;
+
+        // Store drop position for post-it creation
+        setPostItDropPosition({ x: stageX, y: stageY });
+        handleCreatePostIt();
+        return;
+      }
+
       // Handle sticker drop
       if (!stageRef.current || !containerRef.current) return;
 
@@ -349,8 +370,16 @@ export default function Canvas() {
       // Create new post-it
       if (!stageRef.current) return;
 
-      const centerX = dimensions.width / 2 / zoom - stagePosition.x / zoom;
-      const centerY = dimensions.height / 2 / zoom - stagePosition.y / zoom;
+      // Use drop position if available, otherwise use center
+      let posX, posY;
+      if (postItDropPosition) {
+        posX = postItDropPosition.x;
+        posY = postItDropPosition.y;
+        setPostItDropPosition(null); // Clear after use
+      } else {
+        posX = dimensions.width / 2 / zoom - stagePosition.x / zoom;
+        posY = dimensions.height / 2 / zoom - stagePosition.y / zoom;
+      }
 
       // Create canvas to render post-it
       const canvas = document.createElement('canvas');
@@ -374,8 +403,8 @@ export default function Canvas() {
           image: img,
           width: size,
           height: size,
-          x: centerX - size / 2,
-          y: centerY - size / 2,
+          x: posX - size / 2,
+          y: posY - size / 2,
           rotation: 0,
           scaleX: 1,
           scaleY: 1,
@@ -1116,15 +1145,6 @@ export default function Canvas() {
           title="Redo (Cmd+Shift+Z)"
         >
           <Redo2 className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleCreatePostIt}
-          className="bg-white"
-          title="Add Post-it Note"
-        >
-          <StickyNote className="h-4 w-4" />
         </Button>
       </div>
 
