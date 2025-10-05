@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MoreVertical, Crop, ZoomIn, ZoomOut, Download, Trash2, Undo2, Redo2, Sparkles, ArrowUpCircle, FileDown, Loader2, Check, Eraser } from 'lucide-react';
+import { MoreVertical, Crop, ZoomIn, ZoomOut, Download, Trash2, Undo2, Redo2, Sparkles, ArrowUpCircle, FileDown, Loader2, Check, Eraser, Link } from 'lucide-react';
 import { useCanvasStore, setImageRef, getAllImageRefs } from '@/stores/canvasStore';
 import { toast } from 'sonner';
 import CropDialog from './CropDialog';
@@ -346,6 +346,21 @@ export default function Canvas() {
     } catch (error) {
       console.error('Download failed:', error);
       toast.error('Failed to download image');
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    if (selectedIndices.length !== 1) return;
+
+    const imageData = images[selectedIndices[0]];
+    if (!imageData?.s3Url) return;
+
+    try {
+      await navigator.clipboard.writeText(imageData.s3Url);
+      toast.success('URL copied to clipboard');
+    } catch (error) {
+      console.error('Copy failed:', error);
+      toast.error('Failed to copy URL');
     }
   };
 
@@ -1055,6 +1070,10 @@ export default function Canvas() {
                   <DropdownMenuItem onClick={handleDownload}>
                     <Download className="h-4 w-4 mr-2" />
                     Download
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCopyUrl}>
+                    <Link className="h-4 w-4 mr-2" />
+                    Copy URL
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleUpscale}>
                     <ArrowUpCircle className="h-4 w-4 mr-2" />
