@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MoreVertical, Crop, ZoomIn, ZoomOut, Download, Trash2, Undo2, Redo2, Sparkles, ArrowUpCircle, FileDown, Loader2, Check, Eraser, Link, Eye, EyeOff } from 'lucide-react';
+import { MoreVertical, Crop, ZoomIn, ZoomOut, Download, Trash2, Undo2, Redo2, Sparkles, ArrowUpCircle, FileDown, Loader2, Check, Eraser, Link, Eye, EyeOff, Pencil } from 'lucide-react';
 import { useCanvasStore, setImageRef, getAllImageRefs } from '@/stores/canvasStore';
 import { toast } from 'sonner';
 import CropDialog from './CropDialog';
@@ -101,7 +101,7 @@ export default function Canvas() {
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Keyboard shortcuts for undo/redo
+  // Keyboard shortcuts for undo/redo and delete
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check for Cmd+Z (Mac) or Ctrl+Z (Windows/Linux)
@@ -128,11 +128,21 @@ export default function Canvas() {
           redo();
         }
       }
+
+      // Delete or Backspace to delete selected items
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIndices.length > 0) {
+        // Don't trigger if user is typing in an input/textarea
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+          return;
+        }
+        e.preventDefault();
+        deleteSelectedImages();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, canUndo, canRedo]);
+  }, [undo, redo, canUndo, canRedo, selectedIndices, deleteSelectedImages]);
 
   // Update transformer when selection changes
   useEffect(() => {
@@ -660,7 +670,7 @@ export default function Canvas() {
     }
   };
 
-  const handleDownloadBoard = async (quality: number) => {
+  const handleDownloadBoard = async (includeReactions: boolean) => {
     if (!stageRef.current || images.length === 0) {
       toast.error('No images to download');
       return;
@@ -668,31 +678,66 @@ export default function Canvas() {
 
     try {
       const stage = stageRef.current;
+      const layer = stage.getLayers()[0]; // Get the first (and only) layer
       const imageRefsMap = getAllImageRefs();
+      const { briefId } = useCanvasStore.getState();
 
-      // Filter out reactions - only export non-reaction images
+      // Filter images based on includeReactions parameter
+      // Always include assets, only exclude reactions if includeReactions is false
       const exportableImages = images.map((img, index) => ({ img, index }))
-        .filter(({ img }) => !img.isReaction);
+        .filter(({ img }) => includeReactions || !img.isReaction);
 
       if (exportableImages.length === 0) {
-        toast.error('No images to download (reactions are excluded from export)');
+        toast.error('No images to download');
         return;
       }
 
       // Calculate bounding box of all exportable images (accounting for rotation)
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
-      exportableImages.forEach(({ index }) => {
-        const node = imageRefsMap.get(index);
-        if (!node) return;
+      exportableImages.forEach(({ img }) => {
+        // Use the stored image properties directly
+        const imgX = img.x || 0;
+        const imgY = img.y || 0;
+        const imgWidth = img.width * (img.scaleX || 1);
+        const imgHeight = img.height * (img.scaleY || 1);
+        const rotation = img.rotation || 0;
 
-        // Use getClientRect with relativeTo stage to get correct coordinates
-        const rect = node.getClientRect({ relativeTo: stage });
+        // For rotated images, we need to calculate the bounding box
+        if (rotation !== 0) {
+          const centerX = imgX + imgWidth / 2;
+          const centerY = imgY + imgHeight / 2;
+          const rad = (rotation * Math.PI) / 180;
+          const cos = Math.cos(rad);
+          const sin = Math.sin(rad);
 
-        minX = Math.min(minX, rect.x);
-        minY = Math.min(minY, rect.y);
-        maxX = Math.max(maxX, rect.x + rect.width);
-        maxY = Math.max(maxY, rect.y + rect.height);
+          // Calculate the 4 corners
+          const corners = [
+            { x: imgX, y: imgY },
+            { x: imgX + imgWidth, y: imgY },
+            { x: imgX + imgWidth, y: imgY + imgHeight },
+            { x: imgX, y: imgY + imgHeight }
+          ];
+
+          corners.forEach(corner => {
+            // Rotate around center
+            const dx = corner.x - centerX;
+            const dy = corner.y - centerY;
+            const rotatedX = centerX + (dx * cos - dy * sin);
+            const rotatedY = centerY + (dx * sin + dy * cos);
+
+            minX = Math.min(minX, rotatedX);
+            minY = Math.min(minY, rotatedY);
+            maxX = Math.max(maxX, rotatedX);
+            maxY = Math.max(maxY, rotatedY);
+          });
+        } else {
+          // No rotation, simple bounding box
+          minX = Math.min(minX, imgX);
+          minY = Math.min(minY, imgY);
+          maxX = Math.max(maxX, imgX + imgWidth);
+          maxY = Math.max(maxY, imgY + imgHeight);
+        }
       });
 
       const width = maxX - minX;
@@ -705,40 +750,63 @@ export default function Canvas() {
       const exportWidth = width + (padding * 2);
       const exportHeight = height + (padding * 2);
 
-      // Temporarily hide reactions from canvas
-      const reactionIndices: number[] = [];
-      images.forEach((img, index) => {
-        if (img.isReaction) {
-          reactionIndices.push(index);
-          const node = imageRefsMap.get(index);
-          if (node) node.visible(false);
-        }
-      });
+      // Save current stage transforms
+      const originalScale = stage.scaleX();
+      const originalPosition = { x: stage.x(), y: stage.y() };
 
-      // Export with specified quality
-      const dataURL = stage.toDataURL({
+      // Temporarily hide reactions if not including them
+      const hiddenIndices: number[] = [];
+      if (!includeReactions) {
+        images.forEach((img, index) => {
+          if (img.isReaction) {
+            hiddenIndices.push(index);
+            const node = imageRefsMap.get(index);
+            if (node) node.visible(false);
+          }
+        });
+      }
+
+      // Reset stage transforms for export
+      stage.scale({ x: 1, y: 1 });
+      stage.position({ x: 0, y: 0 });
+      layer.batchDraw(); // Force redraw with new transforms
+
+      // Wait a frame to ensure layer has fully redrawn
+      await new Promise(resolve => requestAnimationFrame(resolve));
+
+      // Export from the LAYER with transforms reset (always use 2x quality)
+      const dataURL = layer.toDataURL({
         x: minX,
         y: minY,
         width: exportWidth,
         height: exportHeight,
-        pixelRatio: quality,
+        pixelRatio: 2,
       });
 
-      // Restore reaction visibility
-      reactionIndices.forEach(index => {
+      // Restore stage transforms
+      stage.scale({ x: originalScale, y: originalScale });
+      stage.position(originalPosition);
+
+      // Restore visibility of hidden items
+      hiddenIndices.forEach(index => {
         const node = imageRefsMap.get(index);
         if (node) node.visible(true);
       });
 
+      layer.batchDraw(); // Redraw with restored transforms
+
       // Trigger download
       const link = document.createElement('a');
-      link.download = `moodboard-${quality}x.png`;
+      const filename = briefId
+        ? `board-${includeReactions ? 'and-notes-' : ''}${briefId}.png`
+        : `board${includeReactions ? '-with-notes' : ''}.png`;
+      link.download = filename;
       link.href = dataURL;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      toast.success(`Board downloaded at ${quality}x quality!`);
+      toast.success(includeReactions ? 'Board downloaded with notes!' : 'Board downloaded!');
     } catch (error) {
       console.error('Download board error:', error);
       toast.error('Failed to download board');
@@ -1031,6 +1099,18 @@ export default function Canvas() {
 
   const selectionBounds = selectedIndices.length > 0 ? getSelectionBounds() : null;
 
+  // Determine what's selected to show appropriate menu options
+  const getSelectedItemType = () => {
+    if (selectedIndices.length !== 1) return 'multiple';
+    const item = images[selectedIndices[0]];
+    if (!item) return 'none';
+    if (item.reactionType === 'postit') return 'postit';
+    if (item.isReaction) return 'emoji';
+    return 'image';
+  };
+
+  const selectedItemType = getSelectedItemType();
+
   return (
     <div
       ref={containerRef}
@@ -1075,7 +1155,7 @@ export default function Canvas() {
             alignItems: 'center',
             opacity: 0.5,
           }}
-          title={showReactions ? 'Hide Reactions' : 'Show Reactions'}
+          title={showReactions ? 'Hide Notes & Reactions' : 'Show Notes & Reactions'}
         >
           {showReactions ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
         </button>
@@ -1100,14 +1180,11 @@ export default function Canvas() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleDownloadBoard(1)}>
-                1x - Screen Quality (fast)
+              <DropdownMenuItem onClick={() => handleDownloadBoard(false)}>
+                Download Board
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDownloadBoard(2)}>
-                2x - High Quality (recommended)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDownloadBoard(4)}>
-                4x - Print Quality (large file)
+              <DropdownMenuItem onClick={() => handleDownloadBoard(true)}>
+                Download with Notes & Reactions
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1212,15 +1289,15 @@ export default function Canvas() {
       >
         <Layer>
           {images
-            .filter(img => showReactions || !img.isReaction)
-            .map((imgData, index) => ({ imgData, index }))
+            .map((imgData, originalIndex) => ({ imgData, originalIndex }))
+            .filter(({ imgData }) => showReactions || !imgData.isReaction)
             .sort((a, b) => a.imgData.zIndex - b.imgData.zIndex)
-            .map(({ imgData, index }) => {
+            .map(({ imgData, originalIndex }) => {
               // Render post-it note
               if (imgData.reactionType === 'postit') {
                 return (
                   <PostItNote
-                    key={index}
+                    key={originalIndex}
                     x={imgData.x}
                     y={imgData.y}
                     width={imgData.width}
@@ -1229,12 +1306,12 @@ export default function Canvas() {
                     rotation={imgData.rotation}
                     scaleX={imgData.scaleX}
                     scaleY={imgData.scaleY}
-                    isSelected={selectedIndices.includes(index)}
-                    onSelect={(e: any) => handleSelect(index, e)}
-                    onDragEnd={(e: any) => handleImageDragEnd(index, e)}
-                    onTransformEnd={(e: any) => handleImageTransformEnd(index, e)}
-                    onDoubleClick={() => handleEditPostIt(index)}
-                    nodeRef={(node: Konva.Group | null) => setImageRef(index, node as any)}
+                    isSelected={selectedIndices.includes(originalIndex)}
+                    onSelect={(e: any) => handleSelect(originalIndex, e)}
+                    onDragEnd={(e: any) => handleImageDragEnd(originalIndex, e)}
+                    onTransformEnd={(e: any) => handleImageTransformEnd(originalIndex, e)}
+                    onDoubleClick={() => handleEditPostIt(originalIndex)}
+                    nodeRef={(node: Konva.Group | null) => setImageRef(originalIndex, node as any)}
                   />
                 );
               }
@@ -1242,7 +1319,7 @@ export default function Canvas() {
               // Render regular image
               return (
                 <TransformableImage
-                  key={index}
+                  key={originalIndex}
                   image={imgData.image}
                   width={imgData.width}
                   height={imgData.height}
@@ -1251,11 +1328,11 @@ export default function Canvas() {
                   rotation={imgData.rotation}
                   scaleX={imgData.scaleX}
                   scaleY={imgData.scaleY}
-                  isSelected={selectedIndices.includes(index)}
-                  onSelect={(e: any) => handleSelect(index, e)}
-                  onDragEnd={(e: any) => handleImageDragEnd(index, e)}
-                  onTransformEnd={(e: any) => handleImageTransformEnd(index, e)}
-                  nodeRef={(node: Konva.Image) => setImageRef(index, node)}
+                  isSelected={selectedIndices.includes(originalIndex)}
+                  onSelect={(e: any) => handleSelect(originalIndex, e)}
+                  onDragEnd={(e: any) => handleImageDragEnd(originalIndex, e)}
+                  onTransformEnd={(e: any) => handleImageTransformEnd(originalIndex, e)}
+                  nodeRef={(node: Konva.Image) => setImageRef(originalIndex, node)}
                   isUpscaling={imgData.isUpscaling}
                   isRemovingBackground={imgData.isRemovingBackground}
                 />
@@ -1317,7 +1394,30 @@ export default function Canvas() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              {selectedIndices.length === 1 && (
+              {/* Post-it note: Edit + Delete */}
+              {selectedItemType === 'postit' && (
+                <>
+                  <DropdownMenuItem onClick={() => handleEditPostIt(selectedIndices[0])}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDelete}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              {/* Emoji sticker: Delete only */}
+              {selectedItemType === 'emoji' && (
+                <DropdownMenuItem onClick={handleDelete}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+
+              {/* Regular image: All options */}
+              {selectedItemType === 'image' && (
                 <>
                   <DropdownMenuItem onClick={handleOpenCrop}>
                     <Crop className="h-4 w-4 mr-2" />
@@ -1339,12 +1439,20 @@ export default function Canvas() {
                     <Eraser className="h-4 w-4 mr-2" />
                     Remove Background
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDelete}>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
                 </>
               )}
-              <DropdownMenuItem onClick={handleDelete}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete {selectedIndices.length > 1 ? `(${selectedIndices.length})` : ''}
-              </DropdownMenuItem>
+
+              {/* Multiple items selected: Delete only */}
+              {selectedItemType === 'multiple' && (
+                <DropdownMenuItem onClick={handleDelete}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete ({selectedIndices.length})
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

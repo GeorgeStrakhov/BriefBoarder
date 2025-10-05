@@ -229,80 +229,87 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
             </div>
 
             {/* Settings */}
-            <div className="space-y-2">
-              <div>
-                <label className="text-xs font-medium text-gray-700 mb-2 block">
-                  Image Generation Model
-                </label>
-                <Select
-                  value={settings.imageGenerationModel}
-                  onValueChange={(value) => handleSettingChange('imageGenerationModel', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="imagen-4-ultra">imagen-4-ultra</SelectItem>
-                    <SelectItem value="flux-pro-1-1">flux-pro-1-1</SelectItem>
-                    <SelectItem value="flux-schnell">flux-schnell (fast)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <details open>
+                <summary className="text-sm font-medium text-gray-700 mb-3 cursor-pointer">
+                  Settings
+                </summary>
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-2 block">
+                      Image Generation Model
+                    </label>
+                    <Select
+                      value={settings.imageGenerationModel}
+                      onValueChange={(value) => handleSettingChange('imageGenerationModel', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="imagen-4-ultra">imagen-4-ultra</SelectItem>
+                        <SelectItem value="flux-pro-1-1">flux-pro-1-1</SelectItem>
+                        <SelectItem value="flux-schnell">flux-schnell (fast)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div>
-                <label className="text-xs font-medium text-gray-700 mb-2 block">
-                  Image Editing Model
-                </label>
-                <Select
-                  value={settings.imageEditingModel}
-                  onValueChange={(value) => handleSettingChange('imageEditingModel', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="nano-banana">nano-banana</SelectItem>
-                    <SelectItem value="flux-kontext">flux-kontext-pro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-2 block">
+                      Image Editing Model
+                    </label>
+                    <Select
+                      value={settings.imageEditingModel}
+                      onValueChange={(value) => handleSettingChange('imageEditingModel', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="nano-banana">nano-banana</SelectItem>
+                        <SelectItem value="flux-kontext">flux-kontext-pro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div>
-                <label className="text-xs font-medium text-gray-700 mb-2 block">
-                  Image Upscaling Model
-                </label>
-                <Select
-                  value={settings.imageUpscalingModel}
-                  onValueChange={(value) => handleSettingChange('imageUpscalingModel', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="topaz-image-upscaler">topaz-image-upscaler</SelectItem>
-                    <SelectItem value="clarity-upscaler">clarity-upscaler</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-2 block">
+                      Image Upscaling Model
+                    </label>
+                    <Select
+                      value={settings.imageUpscalingModel}
+                      onValueChange={(value) => handleSettingChange('imageUpscalingModel', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="topaz-image-upscaler">topaz-image-upscaler</SelectItem>
+                        <SelectItem value="clarity-upscaler">clarity-upscaler</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div>
-                <label className="text-xs font-medium text-gray-700 mb-2 block">
-                  Default Aspect Ratio
-                </label>
-                <Select
-                  value={settings.defaultAspectRatio}
-                  onValueChange={(value) => handleSettingChange('defaultAspectRatio', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1:1">1:1</SelectItem>
-                    <SelectItem value="9:16">9:16</SelectItem>
-                    <SelectItem value="16:9">16:9</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-2 block">
+                      Default Aspect Ratio
+                    </label>
+                    <Select
+                      value={settings.defaultAspectRatio}
+                      onValueChange={(value) => handleSettingChange('defaultAspectRatio', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1:1">1:1</SelectItem>
+                        <SelectItem value="9:16">9:16</SelectItem>
+                        <SelectItem value="16:9">16:9</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </details>
             </div>
 
             {/* Reactions & Notes */}
