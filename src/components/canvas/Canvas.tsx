@@ -96,9 +96,25 @@ export default function Canvas() {
         });
       }
     };
+
     updateDimensions();
+
+    // Listen to window resize
     window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
+
+    // Use ResizeObserver to detect container size changes (e.g., sidebar collapse)
+    let resizeObserver: ResizeObserver | null = null;
+    if (containerRef.current) {
+      resizeObserver = new ResizeObserver(updateDimensions);
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateDimensions);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
   }, []);
 
   // Keyboard shortcuts for undo/redo and delete

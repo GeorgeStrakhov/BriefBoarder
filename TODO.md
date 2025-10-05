@@ -1,7 +1,5 @@
 - real-time collab and sync with liveblocks and conflict resolution
 
-- fix closing sidebar still boundary
-
 - add styles (defined as prompt and optional reference images): random, empty or specific
 
 - add smart prompt pre-processing (and that one decides what to give to nano banana)

@@ -300,14 +300,33 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   addImage: (image) => {
     set((state) => {
-      // Find max zIndex and assign next available
-      const maxZIndex = state.images.reduce((max, img) => Math.max(max, img.zIndex), -1);
-      const imageWithZIndex = { ...image, zIndex: maxZIndex + 1 };
+      // Reactions always go on top with zIndex starting at 10000
+      // Regular images use zIndex 0-9999
+      const isReaction = image.isReaction || image.reactionType;
 
-      return {
-        images: [...state.images, imageWithZIndex],
-        // Don't auto-select newly added images
-      };
+      if (isReaction) {
+        // Find max zIndex among reactions
+        const maxReactionZIndex = state.images
+          .filter(img => img.isReaction || img.reactionType)
+          .reduce((max, img) => Math.max(max, img.zIndex), 9999);
+        const imageWithZIndex = { ...image, zIndex: maxReactionZIndex + 1 };
+
+        return {
+          images: [...state.images, imageWithZIndex],
+        };
+      } else {
+        // Find max zIndex among non-reactions (must stay below 10000)
+        const maxRegularZIndex = state.images
+          .filter(img => !img.isReaction && !img.reactionType)
+          .reduce((max, img) => Math.max(max, img.zIndex), -1);
+        // Ensure we never assign zIndex >= 10000 to regular images
+        const nextZIndex = Math.min(maxRegularZIndex + 1, 9999);
+        const imageWithZIndex = { ...image, zIndex: nextZIndex };
+
+        return {
+          images: [...state.images, imageWithZIndex],
+        };
+      }
     });
     get().markUnsaved();
     // Don't push history yet - wait until upload completes
@@ -342,15 +361,34 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   setSelectedIndices: (indices) => {
     const { images } = get();
 
-    // If selecting new images, bring them to front
+    // If selecting new images, bring them to front within their category
     if (indices.length > 0) {
-      // Find max zIndex
-      const maxZIndex = images.reduce((max, img) => Math.max(max, img.zIndex), -1);
+      // Check if selected items are reactions or regular images
+      const selectedItems = indices.map(i => images[i]);
+      const areReactions = selectedItems.some(img => img?.isReaction || img?.reactionType);
+
+      // Find max zIndex within the appropriate category
+      let maxZIndex: number;
+      if (areReactions) {
+        // Find max among reactions (zIndex >= 10000)
+        maxZIndex = images
+          .filter(img => img.isReaction || img.reactionType)
+          .reduce((max, img) => Math.max(max, img.zIndex), 9999);
+      } else {
+        // Find max among regular images (zIndex < 10000)
+        maxZIndex = images
+          .filter(img => !img.isReaction && !img.reactionType)
+          .reduce((max, img) => Math.max(max, img.zIndex), -1);
+        // Cap at 9998 so adding indices doesn't cross into reaction territory
+        maxZIndex = Math.min(maxZIndex, 9998 - indices.length);
+      }
 
       // Update zIndex for newly selected images
       const updatedImages = images.map((img, i) => {
         if (indices.includes(i)) {
-          return { ...img, zIndex: maxZIndex + 1 + indices.indexOf(i) };
+          const newZIndex = maxZIndex + 1 + indices.indexOf(i);
+          // Double-check we don't cross into reaction territory
+          return { ...img, zIndex: Math.min(newZIndex, 9999) };
         }
         return img;
       });
