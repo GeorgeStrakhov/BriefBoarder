@@ -304,6 +304,70 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
                 </Select>
               </div>
             </div>
+
+            {/* Reactions & Notes */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <details open>
+                <summary className="text-sm font-medium text-gray-700 mb-3 cursor-pointer">
+                  📋 Reactions & Notes
+                </summary>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-2 block">Stickers</label>
+                    <div className="grid grid-cols-5 gap-2">
+                      {['🎉', '❤️', '👍', '🔥', '✨', '👏', '💡', '⭐', '✅', '🚀'].map((emoji) => (
+                        <div
+                          key={emoji}
+                          draggable="true"
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('sticker', emoji);
+                          }}
+                          className="text-2xl cursor-move hover:scale-110 transition-transform flex items-center justify-center p-2 rounded hover:bg-gray-100"
+                        >
+                          {emoji}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 italic">
+                    Use the sticky note button in the bottom-left corner to add post-it notes
+                  </p>
+                </div>
+              </details>
+            </div>
+
+            {/* Assets */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <details open>
+                <summary className="text-sm font-medium text-gray-700 mb-3 cursor-pointer">
+                  🏷️ Assets
+                </summary>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { url: 'https://placehold.co/150x150/FF6B6B/FFFFFF?text=Logo', label: 'Logo' },
+                    { url: 'https://placehold.co/150x150/4ECDC4/FFFFFF?text=Brand', label: 'Brand' },
+                    { url: 'https://placehold.co/150x150/45B7D1/FFFFFF?text=Icon', label: 'Icon' },
+                    { url: 'https://placehold.co/150x150/96CEB4/FFFFFF?text=Badge', label: 'Badge' },
+                  ].map((asset) => (
+                    <div
+                      key={asset.url}
+                      draggable="true"
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('asset', asset.url);
+                      }}
+                      className="cursor-move hover:opacity-80 transition-opacity"
+                    >
+                      <img
+                        src={asset.url}
+                        alt={asset.label}
+                        className="w-full h-20 object-cover rounded border border-gray-200"
+                      />
+                      <p className="text-xs text-gray-500 mt-1 text-center">{asset.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </div>
           </div>
         </div>
       )}

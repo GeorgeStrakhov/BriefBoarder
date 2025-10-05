@@ -12,6 +12,10 @@ export interface CanvasImage {
   isGenerating?: boolean;
   isUpscaling?: boolean;
   isRemovingBackground?: boolean;
+  isReaction?: boolean;
+  reactionType?: 'sticker' | 'postit';
+  assetType?: 'brand' | 'logo';
+  text?: string;
   x: number;
   y: number;
   rotation: number;
@@ -33,6 +37,10 @@ export interface SerializableImageState {
   scaleX: number;
   scaleY: number;
   zIndex: number;
+  isReaction?: boolean;
+  reactionType?: 'sticker' | 'postit';
+  assetType?: 'brand' | 'logo';
+  text?: string;
 }
 
 // Store imageRefs outside of Zustand to avoid re-render loops
@@ -65,6 +73,10 @@ const serializeImages = (images: CanvasImage[]): SerializableImageState[] => {
       scaleX: img.scaleX,
       scaleY: img.scaleY,
       zIndex: img.zIndex,
+      isReaction: img.isReaction,
+      reactionType: img.reactionType,
+      assetType: img.assetType,
+      text: img.text,
     }));
 };
 
@@ -90,6 +102,10 @@ const deserializeImages = async (serialized: SerializableImageState[]): Promise<
             scaleX: data.scaleX,
             scaleY: data.scaleY,
             zIndex: data.zIndex,
+            isReaction: data.isReaction,
+            reactionType: data.reactionType,
+            assetType: data.assetType,
+            text: data.text,
             uploading: false,
           });
         };
@@ -235,6 +251,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                   scaleX: imgData.scaleX,
                   scaleY: imgData.scaleY,
                   zIndex: imgData.zIndex ?? index, // Use saved zIndex or fallback to array index
+                  isReaction: imgData.isReaction,
+                  reactionType: imgData.reactionType,
+                  assetType: imgData.assetType,
+                  text: imgData.text,
                   uploading: false,
                 });
               };
@@ -399,6 +419,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
             scaleX: node?.scaleX() ?? imgData.scaleX,
             scaleY: node?.scaleY() ?? imgData.scaleY,
             zIndex: imgData.zIndex,
+            isReaction: imgData.isReaction,
+            reactionType: imgData.reactionType,
+            assetType: imgData.assetType,
+            text: imgData.text,
           };
         })
         .filter((img) => img.s3Url), // Only save uploaded images

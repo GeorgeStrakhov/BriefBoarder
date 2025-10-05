@@ -11,11 +11,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MoreVertical, Crop, ZoomIn, ZoomOut, Download, Trash2, Undo2, Redo2, Sparkles, ArrowUpCircle, FileDown, Loader2, Check, Eraser, Link } from 'lucide-react';
+import { MoreVertical, Crop, ZoomIn, ZoomOut, Download, Trash2, Undo2, Redo2, Sparkles, ArrowUpCircle, FileDown, Loader2, Check, Eraser, Link, Eye, EyeOff, StickyNote } from 'lucide-react';
 import { useCanvasStore, setImageRef, getAllImageRefs } from '@/stores/canvasStore';
 import { toast } from 'sonner';
 import CropDialog from './CropDialog';
 import DeleteImageDialog from './DeleteImageDialog';
+import PostItNote from './PostItNote';
+import PostItEditDialog from './PostItEditDialog';
 
 function TransformableImage({ image, width, height, x, y, rotation, scaleX, scaleY, isSelected, onSelect, onDragEnd, onTransformEnd, nodeRef, isUpscaling, isRemovingBackground }: any) {
   const imageRef = useRef<Konva.Image>(null);
@@ -75,8 +77,11 @@ export default function Canvas() {
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [showCropDialog, setShowCropDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showPostItDialog, setShowPostItDialog] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [cropImageIndex, setCropImageIndex] = useState<number | null>(null);
+  const [postItImageIndex, setPostItImageIndex] = useState<number | null>(null);
+  const [showReactions, setShowReactions] = useState(true);
   const transformerRef = useRef<Konva.Transformer>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -143,6 +148,102 @@ export default function Canvas() {
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
+
+    // Check if it's a sticker or asset drop
+    const stickerEmoji = e.dataTransfer.getData('sticker');
+    const assetUrl = e.dataTransfer.getData('asset');
+
+    if (stickerEmoji) {
+      // Handle sticker drop
+      if (!stageRef.current || !containerRef.current) return;
+
+      // Get drop position relative to container
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const x = e.clientX - containerRect.left;
+      const y = e.clientY - containerRect.top;
+
+      // Transform to stage coordinates (accounting for zoom and pan)
+      const stage = stageRef.current;
+      const stageX = (x - stage.x()) / zoom;
+      const stageY = (y - stage.y()) / zoom;
+
+      // Create canvas to render emoji as image
+      const canvas = document.createElement('canvas');
+      const size = 100;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.font = `${size * 0.8}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(stickerEmoji, size / 2, size / 2);
+
+      const dataUrl = canvas.toDataURL();
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.src = dataUrl;
+      img.onload = () => {
+        addImage({
+          id: crypto.randomUUID(),
+          image: img,
+          width: size,
+          height: size,
+          x: stageX - size / 2,
+          y: stageY - size / 2,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          isReaction: true,
+          reactionType: 'sticker',
+          s3Url: dataUrl, // Use data URL for stickers (no need to upload)
+        });
+      };
+      return;
+    }
+
+    if (assetUrl) {
+      // Handle asset drop
+      if (!stageRef.current || !containerRef.current) return;
+
+      // Get drop position relative to container
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const x = e.clientX - containerRect.left;
+      const y = e.clientY - containerRect.top;
+
+      // Transform to stage coordinates (accounting for zoom and pan)
+      const stage = stageRef.current;
+      const stageX = (x - stage.x()) / zoom;
+      const stageY = (y - stage.y()) / zoom;
+
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.src = assetUrl;
+      img.onload = () => {
+        const MAX_SIZE = 150;
+        const scale = Math.min(1, MAX_SIZE / Math.max(img.width, img.height));
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+
+        addImage({
+          id: crypto.randomUUID(),
+          image: img,
+          width: scaledWidth,
+          height: scaledHeight,
+          x: stageX - scaledWidth / 2,
+          y: stageY - scaledHeight / 2,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          assetType: 'brand',
+          s3Url: assetUrl, // Use placeholder URL for now
+        });
+      };
+      return;
+    }
+
+    // Handle file drop (existing logic)
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
@@ -231,6 +332,63 @@ export default function Canvas() {
   const confirmDelete = () => {
     deleteSelectedImages();
     setShowDeleteDialog(false);
+  };
+
+  const handleCreatePostIt = () => {
+    setPostItImageIndex(null); // null means creating new
+    setShowPostItDialog(true);
+  };
+
+  const handleEditPostIt = (index: number) => {
+    setPostItImageIndex(index);
+    setShowPostItDialog(true);
+  };
+
+  const handleSavePostIt = async (text: string) => {
+    if (postItImageIndex === null) {
+      // Create new post-it
+      if (!stageRef.current) return;
+
+      const centerX = dimensions.width / 2 / zoom - stagePosition.x / zoom;
+      const centerY = dimensions.height / 2 / zoom - stagePosition.y / zoom;
+
+      // Create canvas to render post-it
+      const canvas = document.createElement('canvas');
+      const size = 200;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Draw yellow background
+      ctx.fillStyle = '#FEFF9C';
+      ctx.fillRect(0, 0, size, size);
+
+      const dataUrl = canvas.toDataURL();
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.src = dataUrl;
+      img.onload = () => {
+        addImage({
+          id: crypto.randomUUID(),
+          image: img,
+          width: size,
+          height: size,
+          x: centerX - size / 2,
+          y: centerY - size / 2,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          isReaction: true,
+          reactionType: 'postit',
+          text: text,
+          s3Url: dataUrl,
+        });
+      };
+    } else {
+      // Update existing post-it
+      updateImage(postItImageIndex, { text });
+    }
   };
 
   const handleImageDragEnd = (index: number, e: any) => {
@@ -483,10 +641,19 @@ export default function Canvas() {
       const stage = stageRef.current;
       const imageRefsMap = getAllImageRefs();
 
-      // Calculate bounding box of all images (accounting for rotation)
+      // Filter out reactions - only export non-reaction images
+      const exportableImages = images.map((img, index) => ({ img, index }))
+        .filter(({ img }) => !img.isReaction);
+
+      if (exportableImages.length === 0) {
+        toast.error('No images to download (reactions are excluded from export)');
+        return;
+      }
+
+      // Calculate bounding box of all exportable images (accounting for rotation)
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
-      images.forEach((_img, index) => {
+      exportableImages.forEach(({ index }) => {
         const node = imageRefsMap.get(index);
         if (!node) return;
 
@@ -509,6 +676,16 @@ export default function Canvas() {
       const exportWidth = width + (padding * 2);
       const exportHeight = height + (padding * 2);
 
+      // Temporarily hide reactions from canvas
+      const reactionIndices: number[] = [];
+      images.forEach((img, index) => {
+        if (img.isReaction) {
+          reactionIndices.push(index);
+          const node = imageRefsMap.get(index);
+          if (node) node.visible(false);
+        }
+      });
+
       // Export with specified quality
       const dataURL = stage.toDataURL({
         x: minX,
@@ -516,6 +693,12 @@ export default function Canvas() {
         width: exportWidth,
         height: exportHeight,
         pixelRatio: quality,
+      });
+
+      // Restore reaction visibility
+      reactionIndices.forEach(index => {
+        const node = imageRefsMap.get(index);
+        if (node) node.visible(true);
       });
 
       // Trigger download
@@ -851,6 +1034,23 @@ export default function Canvas() {
           {saveStatus === 'saved' && <Check className="h-4 w-4" />}
         </div>
 
+        {/* Toggle reactions visibility */}
+        <button
+          onClick={() => setShowReactions(!showReactions)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            display: 'flex',
+            alignItems: 'center',
+            opacity: 0.5,
+          }}
+          title={showReactions ? 'Hide Reactions' : 'Show Reactions'}
+        >
+          {showReactions ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+        </button>
+
         {/* Download board button */}
         {images.length > 0 && (
           <DropdownMenu>
@@ -916,6 +1116,15 @@ export default function Canvas() {
           title="Redo (Cmd+Shift+Z)"
         >
           <Redo2 className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleCreatePostIt}
+          className="bg-white"
+          title="Add Post-it Note"
+        >
+          <StickyNote className="h-4 w-4" />
         </Button>
       </div>
 
@@ -983,28 +1192,55 @@ export default function Canvas() {
       >
         <Layer>
           {images
+            .filter(img => showReactions || !img.isReaction)
             .map((imgData, index) => ({ imgData, index }))
             .sort((a, b) => a.imgData.zIndex - b.imgData.zIndex)
-            .map(({ imgData, index }) => (
-              <TransformableImage
-                key={index}
-                image={imgData.image}
-                width={imgData.width}
-                height={imgData.height}
-                x={imgData.x}
-                y={imgData.y}
-                rotation={imgData.rotation}
-                scaleX={imgData.scaleX}
-                scaleY={imgData.scaleY}
-                isSelected={selectedIndices.includes(index)}
-                onSelect={(e: any) => handleSelect(index, e)}
-                onDragEnd={(e: any) => handleImageDragEnd(index, e)}
-                onTransformEnd={(e: any) => handleImageTransformEnd(index, e)}
-                nodeRef={(node: Konva.Image) => setImageRef(index, node)}
-                isUpscaling={imgData.isUpscaling}
-                isRemovingBackground={imgData.isRemovingBackground}
-              />
-            ))}
+            .map(({ imgData, index }) => {
+              // Render post-it note
+              if (imgData.reactionType === 'postit') {
+                return (
+                  <PostItNote
+                    key={index}
+                    x={imgData.x}
+                    y={imgData.y}
+                    width={imgData.width}
+                    height={imgData.height}
+                    text={imgData.text || ''}
+                    rotation={imgData.rotation}
+                    scaleX={imgData.scaleX}
+                    scaleY={imgData.scaleY}
+                    isSelected={selectedIndices.includes(index)}
+                    onSelect={(e: any) => handleSelect(index, e)}
+                    onDragEnd={(e: any) => handleImageDragEnd(index, e)}
+                    onTransformEnd={(e: any) => handleImageTransformEnd(index, e)}
+                    onDoubleClick={() => handleEditPostIt(index)}
+                    nodeRef={(node: Konva.Group | null) => setImageRef(index, node as any)}
+                  />
+                );
+              }
+
+              // Render regular image
+              return (
+                <TransformableImage
+                  key={index}
+                  image={imgData.image}
+                  width={imgData.width}
+                  height={imgData.height}
+                  x={imgData.x}
+                  y={imgData.y}
+                  rotation={imgData.rotation}
+                  scaleX={imgData.scaleX}
+                  scaleY={imgData.scaleY}
+                  isSelected={selectedIndices.includes(index)}
+                  onSelect={(e: any) => handleSelect(index, e)}
+                  onDragEnd={(e: any) => handleImageDragEnd(index, e)}
+                  onTransformEnd={(e: any) => handleImageTransformEnd(index, e)}
+                  nodeRef={(node: Konva.Image) => setImageRef(index, node)}
+                  isUpscaling={imgData.isUpscaling}
+                  isRemovingBackground={imgData.isRemovingBackground}
+                />
+              );
+            })}
           <Transformer
             ref={transformerRef}
             keepRatio={true}
@@ -1108,6 +1344,14 @@ export default function Canvas() {
         onOpenChange={setShowCropDialog}
         imageUrl={cropImageIndex !== null ? images[cropImageIndex]?.s3Url : undefined}
         onSave={handleSaveCrop}
+      />
+
+      {/* Post-it Edit Dialog */}
+      <PostItEditDialog
+        open={showPostItDialog}
+        onOpenChange={setShowPostItDialog}
+        initialText={postItImageIndex !== null ? images[postItImageIndex]?.text : ''}
+        onSave={handleSavePostIt}
       />
 
       {/* Generate Island */}
