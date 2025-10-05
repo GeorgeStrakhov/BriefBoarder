@@ -1,3 +1,3 @@
-# MoodBoarder
+# BriefBoarder
 
-_do image things with AI_
+_do image-driven ad things with AI. together._
