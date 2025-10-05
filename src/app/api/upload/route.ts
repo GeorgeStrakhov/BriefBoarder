@@ -1,17 +1,17 @@
-import { NextResponse } from 'next/server';
-import { uploadFile } from '@/lib/services/s3/s3';
+import { NextResponse } from "next/server";
+import { uploadFile } from "@/lib/services/s3/s3";
 
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get("file") as File;
 
     if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
     const result = await uploadFile(file, file.name, {
-      folder: 'briefs',
+      folder: "briefs",
     });
 
     return NextResponse.json({
@@ -20,10 +20,12 @@ export async function POST(request: Request) {
       size: result.size,
     });
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error("Upload error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to upload file' },
-      { status: 500 }
+      {
+        error: error instanceof Error ? error.message : "Failed to upload file",
+      },
+      { status: 500 },
     );
   }
 }

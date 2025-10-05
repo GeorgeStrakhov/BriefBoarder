@@ -1,17 +1,21 @@
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 export default function NotFound() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="text-center">
-        <h1 className="text-6xl font-bold text-gray-900 mb-4">404</h1>
-        <h2 className="text-2xl font-semibold text-gray-700 mb-2">Brief Not Found</h2>
-        <p className="text-gray-600 mb-8">The brief you're looking for doesn't exist.</p>
+        <h1 className="mb-4 text-6xl font-bold text-gray-900">404</h1>
+        <h2 className="mb-2 text-2xl font-semibold text-gray-700">
+          Brief Not Found
+        </h2>
+        <p className="mb-8 text-gray-600">
+          The brief you&apos;re looking for doesn&apos;t exist.
+        </p>
         <Link href="/">
           <Button>
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Briefs
           </Button>
         </Link>

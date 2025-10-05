@@ -1,6 +1,6 @@
-import { useRef, useEffect } from 'react';
-import { Group, Rect, Text } from 'react-konva';
-import Konva from 'konva';
+import { useRef, useEffect } from "react";
+import { Group, Rect, Text } from "react-konva";
+import Konva from "konva";
 
 interface PostItNoteProps {
   x: number;
@@ -12,8 +12,11 @@ interface PostItNoteProps {
   scaleX: number;
   scaleY: number;
   isSelected: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSelect: (e: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onDragEnd: (e: any) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onTransformEnd: (e: any) => void;
   onDoubleClick: () => void;
   nodeRef: (node: Konva.Group | null) => void;
@@ -64,7 +67,7 @@ export default function PostItNote({
         width={width}
         height={height}
         fill="#FEFF9C"
-        stroke={isSelected ? '#0066ff' : '#E5E5A0'}
+        stroke={isSelected ? "#0066ff" : "#E5E5A0"}
         strokeWidth={isSelected ? 2 : 1}
         shadowColor="black"
         shadowBlur={10}
@@ -75,11 +78,11 @@ export default function PostItNote({
       />
       {/* Text content */}
       <Text
-        text={text || 'Double-click to edit'}
+        text={text || "Double-click to edit"}
         fontSize={16}
         fontFamily="Arial"
-        fill={text ? '#333' : '#999'}
-        fontStyle={text ? 'normal' : 'italic'}
+        fill={text ? "#333" : "#999"}
+        fontStyle={text ? "normal" : "italic"}
         width={width}
         height={height}
         padding={15}

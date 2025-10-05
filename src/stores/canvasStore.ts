@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import Konva from 'konva';
+import { create } from "zustand";
+import Konva from "konva";
 
 export interface CanvasImage {
   id: string;
@@ -13,8 +13,8 @@ export interface CanvasImage {
   isUpscaling?: boolean;
   isRemovingBackground?: boolean;
   isReaction?: boolean;
-  reactionType?: 'sticker' | 'postit';
-  assetType?: 'brand' | 'logo';
+  reactionType?: "sticker" | "postit";
+  assetType?: "brand" | "logo";
   text?: string;
   x: number;
   y: number;
@@ -38,8 +38,8 @@ export interface SerializableImageState {
   scaleY: number;
   zIndex: number;
   isReaction?: boolean;
-  reactionType?: 'sticker' | 'postit';
-  assetType?: 'brand' | 'logo';
+  reactionType?: "sticker" | "postit";
+  assetType?: "brand" | "logo";
   text?: string;
 }
 
@@ -60,8 +60,8 @@ let historyStep = -1;
 // Serialize images array for history
 const serializeImages = (images: CanvasImage[]): SerializableImageState[] => {
   return images
-    .filter(img => img.s3Url) // Only save uploaded images
-    .map(img => ({
+    .filter((img) => img.s3Url) // Only save uploaded images
+    .map((img) => ({
       id: img.id,
       s3Url: img.s3Url,
       s3Key: img.s3Key,
@@ -81,13 +81,15 @@ const serializeImages = (images: CanvasImage[]): SerializableImageState[] => {
 };
 
 // Deserialize images from history
-const deserializeImages = async (serialized: SerializableImageState[]): Promise<CanvasImage[]> => {
+const deserializeImages = async (
+  serialized: SerializableImageState[],
+): Promise<CanvasImage[]> => {
   return Promise.all(
     serialized.map(async (data) => {
       return new Promise<CanvasImage>((resolve, reject) => {
         const img = new window.Image();
-        img.crossOrigin = 'anonymous';
-        img.src = data.s3Url || '';
+        img.crossOrigin = "anonymous";
+        img.src = data.s3Url || "";
         img.onload = () => {
           resolve({
             id: data.id,
@@ -113,7 +115,7 @@ const deserializeImages = async (serialized: SerializableImageState[]): Promise<
           reject(new Error(`Failed to load image: ${data.s3Url}`));
         };
       });
-    })
+    }),
   );
 };
 
@@ -160,7 +162,7 @@ interface CanvasState {
   briefId: string | null;
   images: CanvasImage[];
   selectedIndices: number[];
-  saveStatus: 'saved' | 'saving' | 'unsaved';
+  saveStatus: "saved" | "saving" | "unsaved";
   isLoading: boolean;
   isInitialLoad: boolean;
   zoom: number;
@@ -173,7 +175,7 @@ interface CanvasState {
   // Actions
   setBriefId: (id: string) => void;
   loadBrief: (briefId: string) => Promise<void>;
-  addImage: (image: Omit<CanvasImage, 'zIndex'>) => void;
+  addImage: (image: Omit<CanvasImage, "zIndex">) => void;
   updateImage: (index: number, updates: Partial<CanvasImage>) => void;
   deleteSelectedImages: () => void;
   setSelectedIndices: (indices: number[]) => void;
@@ -199,18 +201,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   briefId: null,
   images: [],
   selectedIndices: [],
-  saveStatus: 'saved',
+  saveStatus: "saved",
   isLoading: false,
   isInitialLoad: false,
   zoom: 1,
   stagePosition: { x: 0, y: 0 },
   settings: {
-    imageGenerationModel: 'imagen-4-ultra',
-    imageEditingModel: 'nano-banana',
-    imageUpscalingModel: 'topaz-image-upscaler',
-    defaultAspectRatio: '1:1',
+    imageGenerationModel: "imagen-4-ultra",
+    imageEditingModel: "nano-banana",
+    imageUpscalingModel: "topaz-image-upscaler",
+    defaultAspectRatio: "1:1",
   },
-  lastSavedState: '',
+  lastSavedState: "",
 
   setBriefId: (id) => set({ briefId: id }),
 
@@ -232,10 +234,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       if (brief.canvasState?.images && brief.canvasState.images.length > 0) {
         // Load images from S3 URLs
         const loadedImages = await Promise.all(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           brief.canvasState.images.map(async (imgData: any, index: number) => {
             return new Promise<CanvasImage>((resolve) => {
               const img = new window.Image();
-              img.crossOrigin = 'anonymous';
+              img.crossOrigin = "anonymous";
               img.src = imgData.s3Url;
               img.onload = () => {
                 resolve({
@@ -259,10 +262,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
                 });
               };
               img.onerror = () => {
-                console.error('Failed to load image:', imgData.s3Url);
+                console.error("Failed to load image:", imgData.s3Url);
               };
             });
-          })
+          }),
         );
 
         const stateString = JSON.stringify(brief.canvasState);
@@ -270,19 +273,24 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
           images: loadedImages,
           zoom: brief.canvasState.zoom ?? 1,
           stagePosition: brief.canvasState.stagePosition ?? { x: 0, y: 0 },
-          settings: brief.settings ? {
-            imageGenerationModel: brief.settings.imageGenerationModel ?? 'imagen-4-ultra',
-            imageEditingModel: brief.settings.imageEditingModel ?? 'nano-banana',
-            imageUpscalingModel: brief.settings.imageUpscalingModel ?? 'topaz-image-upscaler',
-            defaultAspectRatio: brief.settings.defaultAspectRatio ?? '1:1',
-          } : {
-            imageGenerationModel: 'imagen-4-ultra',
-            imageEditingModel: 'nano-banana',
-            imageUpscalingModel: 'topaz-image-upscaler',
-            defaultAspectRatio: '1:1',
-          },
+          settings: brief.settings
+            ? {
+                imageGenerationModel:
+                  brief.settings.imageGenerationModel ?? "imagen-4-ultra",
+                imageEditingModel:
+                  brief.settings.imageEditingModel ?? "nano-banana",
+                imageUpscalingModel:
+                  brief.settings.imageUpscalingModel ?? "topaz-image-upscaler",
+                defaultAspectRatio: brief.settings.defaultAspectRatio ?? "1:1",
+              }
+            : {
+                imageGenerationModel: "imagen-4-ultra",
+                imageEditingModel: "nano-banana",
+                imageUpscalingModel: "topaz-image-upscaler",
+                defaultAspectRatio: "1:1",
+              },
           lastSavedState: stateString,
-          saveStatus: 'saved',
+          saveStatus: "saved",
           isLoading: false,
           isInitialLoad: false,
         });
@@ -293,7 +301,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         set({ isLoading: false, isInitialLoad: false });
       }
     } catch (error) {
-      console.error('Failed to load brief:', error);
+      console.error("Failed to load brief:", error);
       set({ isLoading: false, isInitialLoad: false });
     }
   },
@@ -307,7 +315,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       if (isReaction) {
         // Find max zIndex among reactions
         const maxReactionZIndex = state.images
-          .filter(img => img.isReaction || img.reactionType)
+          .filter((img) => img.isReaction || img.reactionType)
           .reduce((max, img) => Math.max(max, img.zIndex), 9999);
         const imageWithZIndex = { ...image, zIndex: maxReactionZIndex + 1 };
 
@@ -317,7 +325,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       } else {
         // Find max zIndex among non-reactions (must stay below 10000)
         const maxRegularZIndex = state.images
-          .filter(img => !img.isReaction && !img.reactionType)
+          .filter((img) => !img.isReaction && !img.reactionType)
           .reduce((max, img) => Math.max(max, img.zIndex), -1);
         // Ensure we never assign zIndex >= 10000 to regular images
         const nextZIndex = Math.min(maxRegularZIndex + 1, 9999);
@@ -334,7 +342,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   updateImage: (index, updates) => {
     set((state) => ({
-      images: state.images.map((img, i) => (i === index ? { ...img, ...updates } : img)),
+      images: state.images.map((img, i) =>
+        i === index ? { ...img, ...updates } : img,
+      ),
     }));
     get().markUnsaved();
 
@@ -348,7 +358,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   deleteSelectedImages: () => {
     const { selectedIndices } = get();
     set((state) => ({
-      images: state.images.filter((_, index) => !selectedIndices.includes(index)),
+      images: state.images.filter(
+        (_, index) => !selectedIndices.includes(index),
+      ),
       selectedIndices: [],
     }));
     get().markUnsaved();
@@ -364,20 +376,22 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     // If selecting new images, bring them to front within their category
     if (indices.length > 0) {
       // Check if selected items are reactions or regular images
-      const selectedItems = indices.map(i => images[i]);
-      const areReactions = selectedItems.some(img => img?.isReaction || img?.reactionType);
+      const selectedItems = indices.map((i) => images[i]);
+      const areReactions = selectedItems.some(
+        (img) => img?.isReaction || img?.reactionType,
+      );
 
       // Find max zIndex within the appropriate category
       let maxZIndex: number;
       if (areReactions) {
         // Find max among reactions (zIndex >= 10000)
         maxZIndex = images
-          .filter(img => img.isReaction || img.reactionType)
+          .filter((img) => img.isReaction || img.reactionType)
           .reduce((max, img) => Math.max(max, img.zIndex), 9999);
       } else {
         // Find max among regular images (zIndex < 10000)
         maxZIndex = images
-          .filter(img => !img.isReaction && !img.reactionType)
+          .filter((img) => !img.isReaction && !img.reactionType)
           .reduce((max, img) => Math.max(max, img.zIndex), -1);
         // Cap at 9998 so adding indices doesn't cross into reaction territory
         maxZIndex = Math.min(maxZIndex, 9998 - indices.length);
@@ -415,7 +429,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
               scaleX: node.scaleX(),
               scaleY: node.scaleY(),
             }
-          : img
+          : img,
       ),
     }));
     get().markUnsaved();
@@ -436,7 +450,14 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   saveToDatabase: async () => {
-    const { briefId, images, zoom, stagePosition, lastSavedState, isInitialLoad } = get();
+    const {
+      briefId,
+      images,
+      zoom,
+      stagePosition,
+      lastSavedState,
+      isInitialLoad,
+    } = get();
 
     if (!briefId || isInitialLoad) return;
 
@@ -447,8 +468,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
           const node = getImageRef(index);
           return {
             id: imgData.id,
-            s3Url: imgData.s3Url || '',
-            s3Key: imgData.s3Key || '',
+            s3Url: imgData.s3Url || "",
+            s3Key: imgData.s3Key || "",
             x: node?.x() ?? imgData.x,
             y: node?.y() ?? imgData.y,
             width: imgData.width,
@@ -475,31 +496,31 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       return;
     }
 
-    set({ saveStatus: 'saving' });
+    set({ saveStatus: "saving" });
 
     try {
       const response = await fetch(`/api/briefs/${briefId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ canvasState }),
       });
 
       if (response.ok) {
-        set({ lastSavedState: stateString, saveStatus: 'saved' });
+        set({ lastSavedState: stateString, saveStatus: "saved" });
       } else {
-        set({ saveStatus: 'unsaved' });
+        set({ saveStatus: "unsaved" });
       }
     } catch (error) {
-      console.error('Save error:', error);
-      set({ saveStatus: 'unsaved' });
+      console.error("Save error:", error);
+      set({ saveStatus: "unsaved" });
     }
   },
 
   markUnsaved: () => {
     const { isInitialLoad, saveStatus } = get();
     // Don't mark unsaved during initial load
-    if (!isInitialLoad && saveStatus !== 'unsaved') {
-      set({ saveStatus: 'unsaved' });
+    if (!isInitialLoad && saveStatus !== "unsaved") {
+      set({ saveStatus: "unsaved" });
     }
   },
 
@@ -510,18 +531,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       briefId: null,
       images: [],
       selectedIndices: [],
-      saveStatus: 'saved',
+      saveStatus: "saved",
       isLoading: false,
       isInitialLoad: false,
       zoom: 1,
       stagePosition: { x: 0, y: 0 },
       settings: {
-        imageGenerationModel: 'imagen-4-ultra',
-        imageEditingModel: 'nano-banana',
-        imageUpscalingModel: 'topaz-image-upscaler',
-        defaultAspectRatio: '1:1',
+        imageGenerationModel: "imagen-4-ultra",
+        imageEditingModel: "nano-banana",
+        imageUpscalingModel: "topaz-image-upscaler",
+        defaultAspectRatio: "1:1",
       },
-      lastSavedState: '',
+      lastSavedState: "",
     });
   },
 
@@ -535,12 +556,12 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
     try {
       await fetch(`/api/briefs/${briefId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ settings: updatedSettings }),
       });
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      console.error("Failed to save settings:", error);
     }
   },
 
@@ -556,7 +577,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       set({ images, selectedIndices: [] });
       get().markUnsaved();
     } catch (error) {
-      console.error('Failed to undo:', error);
+      console.error("Failed to undo:", error);
       historyStep++; // Revert step if failed
     }
   },
@@ -572,7 +593,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       set({ images, selectedIndices: [] });
       get().markUnsaved();
     } catch (error) {
-      console.error('Failed to redo:', error);
+      console.error("Failed to redo:", error);
       historyStep--; // Revert step if failed
     }
   },

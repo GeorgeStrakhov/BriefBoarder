@@ -1,9 +1,15 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2 } from 'lucide-react';
+import { Trash2 } from "lucide-react";
 
 interface Brief {
   id: string;
@@ -27,8 +33,8 @@ interface Brief {
 export default function Home() {
   const router = useRouter();
   const [briefs, setBriefs] = useState<Brief[]>([]);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [briefToDelete, setBriefToDelete] = useState<Brief | null>(null);
@@ -38,7 +44,7 @@ export default function Home() {
   }, []);
 
   const fetchBriefs = async () => {
-    const res = await fetch('/api/briefs');
+    const res = await fetch("/api/briefs");
     const data = await res.json();
     setBriefs(data);
   };
@@ -48,9 +54,9 @@ export default function Home() {
     if (!name.trim()) return;
 
     setLoading(true);
-    const res = await fetch('/api/briefs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/briefs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, description }),
     });
 
@@ -73,23 +79,23 @@ export default function Home() {
 
     try {
       const res = await fetch(`/api/briefs/${briefToDelete.id}`, {
-        method: 'DELETE',
+        method: "DELETE",
       });
 
       if (res.ok) {
-        setBriefs(briefs.filter(b => b.id !== briefToDelete.id));
+        setBriefs(briefs.filter((b) => b.id !== briefToDelete.id));
         setDeleteDialogOpen(false);
         setBriefToDelete(null);
       }
     } catch (error) {
-      console.error('Failed to delete brief:', error);
+      console.error("Failed to delete brief:", error);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">Mood Briefs</h1>
+      <div className="mx-auto max-w-4xl">
+        <h1 className="mb-8 text-4xl font-bold">Mood Briefs</h1>
 
         <Card className="mb-8">
           <CardHeader>
@@ -113,27 +119,29 @@ export default function Home() {
                 />
               </div>
               <Button type="submit" disabled={loading}>
-                {loading ? 'Creating...' : 'Create Brief'}
+                {loading ? "Creating..." : "Create Brief"}
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        <h2 className="text-2xl font-semibold mb-4">Your Briefs</h2>
+        <h2 className="mb-4 text-2xl font-semibold">Your Briefs</h2>
         <div className="grid gap-4">
           {briefs.map((brief) => (
             <Card
               key={brief.id}
-              className="cursor-pointer hover:shadow-lg transition-shadow"
+              className="cursor-pointer transition-shadow hover:shadow-lg"
               onClick={() => router.push(`/briefs/${brief.id}`)}
             >
               <CardHeader className="flex flex-row items-start justify-between space-y-0">
                 <div className="flex-1">
                   <CardTitle>{brief.name}</CardTitle>
                   {brief.description && (
-                    <CardDescription className="mt-1.5">{brief.description}</CardDescription>
+                    <CardDescription className="mt-1.5">
+                      {brief.description}
+                    </CardDescription>
                   )}
-                  <CardDescription className="text-xs mt-1.5">
+                  <CardDescription className="mt-1.5 text-xs">
                     Created {new Date(brief.createdAt).toLocaleDateString()}
                   </CardDescription>
                 </div>
@@ -141,7 +149,7 @@ export default function Home() {
                   variant="ghost"
                   size="icon"
                   onClick={(e) => handleDeleteClick(brief, e)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -156,12 +164,16 @@ export default function Home() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Brief</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{briefToDelete?.name}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{briefToDelete?.name}&quot;?
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

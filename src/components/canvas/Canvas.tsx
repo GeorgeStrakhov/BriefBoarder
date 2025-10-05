@@ -1,8 +1,8 @@
 "use client";
-import { useState, useRef, useEffect } from 'react';
-import { Stage, Layer, Image as KonvaImage, Transformer } from 'react-konva';
-import Konva from 'konva';
-import { PixelCrop } from 'react-image-crop';
+import { useState, useRef, useEffect } from "react";
+import { Stage, Layer, Image as KonvaImage, Transformer } from "react-konva";
+import Konva from "konva";
+import { PixelCrop } from "react-image-crop";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,15 +11,54 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MoreVertical, Crop, ZoomIn, ZoomOut, Download, Trash2, Undo2, Redo2, Sparkles, ArrowUpCircle, FileDown, Loader2, Check, Eraser, Link, Eye, EyeOff, Pencil } from 'lucide-react';
-import { useCanvasStore, setImageRef, getAllImageRefs } from '@/stores/canvasStore';
-import { toast } from 'sonner';
-import CropDialog from './CropDialog';
-import DeleteImageDialog from './DeleteImageDialog';
-import PostItNote from './PostItNote';
-import PostItEditDialog from './PostItEditDialog';
+import {
+  MoreVertical,
+  Crop,
+  ZoomIn,
+  ZoomOut,
+  Download,
+  Trash2,
+  Undo2,
+  Redo2,
+  Sparkles,
+  ArrowUpCircle,
+  FileDown,
+  Loader2,
+  Check,
+  Eraser,
+  Link,
+  Eye,
+  EyeOff,
+  Pencil,
+} from "lucide-react";
+import {
+  useCanvasStore,
+  setImageRef,
+  getAllImageRefs,
+} from "@/stores/canvasStore";
+import { toast } from "sonner";
+import CropDialog from "./CropDialog";
+import DeleteImageDialog from "./DeleteImageDialog";
+import PostItNote from "./PostItNote";
+import PostItEditDialog from "./PostItEditDialog";
 
-function TransformableImage({ image, width, height, x, y, rotation, scaleX, scaleY, isSelected, onSelect, onDragEnd, onTransformEnd, nodeRef, isUpscaling, isRemovingBackground }: any) {
+function TransformableImage({
+  image,
+  width,
+  height,
+  x,
+  y,
+  rotation,
+  scaleX,
+  scaleY,
+  isSelected,
+  onSelect,
+  onDragEnd,
+  onTransformEnd,
+  nodeRef,
+  isUpscaling,
+  isRemovingBackground,
+}: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
   const imageRef = useRef<Konva.Image>(null);
 
   useEffect(() => {
@@ -44,7 +83,7 @@ function TransformableImage({ image, width, height, x, y, rotation, scaleX, scal
       onTap={onSelect}
       onDragEnd={onDragEnd}
       onTransformEnd={onTransformEnd}
-      stroke={isSelected ? '#0066ff' : undefined}
+      stroke={isSelected ? "#0066ff" : undefined}
       strokeWidth={isSelected ? 2 : 0}
       opacity={isUpscaling || isRemovingBackground ? 0.5 : 1}
     />
@@ -78,10 +117,13 @@ export default function Canvas() {
   const [showCropDialog, setShowCropDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPostItDialog, setShowPostItDialog] = useState(false);
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState("");
   const [cropImageIndex, setCropImageIndex] = useState<number | null>(null);
   const [postItImageIndex, setPostItImageIndex] = useState<number | null>(null);
-  const [postItDropPosition, setPostItDropPosition] = useState<{ x: number; y: number } | null>(null);
+  const [postItDropPosition, setPostItDropPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [showReactions, setShowReactions] = useState(true);
   const transformerRef = useRef<Konva.Transformer>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -100,7 +142,7 @@ export default function Canvas() {
     updateDimensions();
 
     // Listen to window resize
-    window.addEventListener('resize', updateDimensions);
+    window.addEventListener("resize", updateDimensions);
 
     // Use ResizeObserver to detect container size changes (e.g., sidebar collapse)
     let resizeObserver: ResizeObserver | null = null;
@@ -110,7 +152,7 @@ export default function Canvas() {
     }
 
     return () => {
-      window.removeEventListener('resize', updateDimensions);
+      window.removeEventListener("resize", updateDimensions);
       if (resizeObserver) {
         resizeObserver.disconnect();
       }
@@ -121,7 +163,7 @@ export default function Canvas() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check for Cmd+Z (Mac) or Ctrl+Z (Windows/Linux)
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "z") {
         e.preventDefault();
 
         if (e.shiftKey) {
@@ -138,7 +180,7 @@ export default function Canvas() {
       }
 
       // Also support Cmd+Y / Ctrl+Y for redo (Windows convention)
-      if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "y") {
         e.preventDefault();
         if (canRedo()) {
           redo();
@@ -146,9 +188,15 @@ export default function Canvas() {
       }
 
       // Delete or Backspace to delete selected items
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIndices.length > 0) {
+      if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        selectedIndices.length > 0
+      ) {
         // Don't trigger if user is typing in an input/textarea
-        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        if (
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement
+        ) {
           return;
         }
         e.preventDefault();
@@ -156,8 +204,8 @@ export default function Canvas() {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [undo, redo, canUndo, canRedo, selectedIndices, deleteSelectedImages]);
 
   // Update transformer when selection changes
@@ -165,8 +213,10 @@ export default function Canvas() {
     if (transformerRef.current) {
       const imageRefsMap = getAllImageRefs();
       const selectedNodes = selectedIndices
-        .map(index => imageRefsMap.get(index))
-        .filter((node): node is Konva.Image => node !== null && node !== undefined);
+        .map((index) => imageRefsMap.get(index))
+        .filter(
+          (node): node is Konva.Image => node !== null && node !== undefined,
+        );
 
       transformerRef.current.nodes(selectedNodes);
       transformerRef.current.getLayer()?.batchDraw();
@@ -177,12 +227,12 @@ export default function Canvas() {
     e.preventDefault();
 
     // Check if it's a sticker or asset drop
-    const stickerEmoji = e.dataTransfer.getData('sticker');
-    const assetUrl = e.dataTransfer.getData('asset');
+    const stickerEmoji = e.dataTransfer.getData("sticker");
+    const assetUrl = e.dataTransfer.getData("asset");
 
     if (stickerEmoji) {
       // Special handling for memo emoji - open post-it dialog
-      if (stickerEmoji === '📝') {
+      if (stickerEmoji === "📝") {
         if (!stageRef.current || !containerRef.current) return;
 
         // Get drop position relative to container
@@ -215,21 +265,21 @@ export default function Canvas() {
       const stageY = (y - stage.y()) / zoom;
 
       // Create canvas to render emoji as image
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       const size = 100;
       canvas.width = size;
       canvas.height = size;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
       ctx.font = `${size * 0.8}px serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       ctx.fillText(stickerEmoji, size / 2, size / 2);
 
       const dataUrl = canvas.toDataURL();
       const img = new window.Image();
-      img.crossOrigin = 'anonymous';
+      img.crossOrigin = "anonymous";
       img.src = dataUrl;
       img.onload = () => {
         addImage({
@@ -243,7 +293,7 @@ export default function Canvas() {
           scaleX: 1,
           scaleY: 1,
           isReaction: true,
-          reactionType: 'sticker',
+          reactionType: "sticker",
           s3Url: dataUrl, // Use data URL for stickers (no need to upload)
         });
       };
@@ -265,7 +315,7 @@ export default function Canvas() {
       const stageY = (y - stage.y()) / zoom;
 
       const img = new window.Image();
-      img.crossOrigin = 'anonymous';
+      img.crossOrigin = "anonymous";
       img.src = assetUrl;
       img.onload = () => {
         const MAX_SIZE = 150;
@@ -283,7 +333,7 @@ export default function Canvas() {
           rotation: 0,
           scaleX: 1,
           scaleY: 1,
-          assetType: 'brand',
+          assetType: "brand",
           s3Url: assetUrl, // Use placeholder URL for now
         });
       };
@@ -292,11 +342,11 @@ export default function Canvas() {
 
     // Handle file drop (existing logic)
     const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const img = new window.Image();
-        img.crossOrigin = 'anonymous';
+        img.crossOrigin = "anonymous";
         img.src = event.target?.result as string;
         img.onload = async () => {
           const MAX_SIZE = 500;
@@ -324,10 +374,10 @@ export default function Canvas() {
           // Upload to S3 in background
           try {
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append("file", file);
 
-            const response = await fetch('/api/upload', {
-              method: 'POST',
+            const response = await fetch("/api/upload", {
+              method: "POST",
               body: formData,
             });
 
@@ -341,11 +391,11 @@ export default function Canvas() {
                 uploading: false,
               });
             } else {
-              console.error('Upload failed:', data.error);
+              console.error("Upload failed:", data.error);
               updateImage(newImageIndex, { uploading: false });
             }
           } catch (error) {
-            console.error('Upload error:', error);
+            console.error("Upload error:", error);
             updateImage(newImageIndex, { uploading: false });
           }
         };
@@ -358,12 +408,13 @@ export default function Canvas() {
     e.preventDefault();
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSelect = (index: number, e: any) => {
     const isShiftKey = e.evt?.shiftKey;
 
     if (isShiftKey) {
       if (selectedIndices.includes(index)) {
-        setSelectedIndices(selectedIndices.filter(i => i !== index));
+        setSelectedIndices(selectedIndices.filter((i) => i !== index));
       } else {
         setSelectedIndices([...selectedIndices, index]);
       }
@@ -408,20 +459,20 @@ export default function Canvas() {
       }
 
       // Create canvas to render post-it
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       const size = 200;
       canvas.width = size;
       canvas.height = size;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
       // Draw yellow background
-      ctx.fillStyle = '#FEFF9C';
+      ctx.fillStyle = "#FEFF9C";
       ctx.fillRect(0, 0, size, size);
 
       const dataUrl = canvas.toDataURL();
       const img = new window.Image();
-      img.crossOrigin = 'anonymous';
+      img.crossOrigin = "anonymous";
       img.src = dataUrl;
       img.onload = () => {
         addImage({
@@ -435,7 +486,7 @@ export default function Canvas() {
           scaleX: 1,
           scaleY: 1,
           isReaction: true,
-          reactionType: 'postit',
+          reactionType: "postit",
           text: text,
           s3Url: dataUrl,
         });
@@ -446,14 +497,17 @@ export default function Canvas() {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleImageDragEnd = (index: number, e: any) => {
     updateImageTransform(index, e.target);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleImageTransformEnd = (index: number, e: any) => {
     updateImageTransform(index, e.target);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleWheel = (e: any) => {
     e.evt.preventDefault();
 
@@ -549,7 +603,7 @@ export default function Canvas() {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
 
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
       link.download = `image-${imageData.id}.png`;
       document.body.appendChild(link);
@@ -557,8 +611,8 @@ export default function Canvas() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Download failed:', error);
-      toast.error('Failed to download image');
+      console.error("Download failed:", error);
+      toast.error("Failed to download image");
     }
   };
 
@@ -570,10 +624,10 @@ export default function Canvas() {
 
     try {
       await navigator.clipboard.writeText(imageData.s3Url);
-      toast.success('URL copied to clipboard');
+      toast.success("URL copied to clipboard");
     } catch (error) {
-      console.error('Copy failed:', error);
-      toast.error('Failed to copy URL');
+      console.error("Copy failed:", error);
+      toast.error("Failed to copy URL");
     }
   };
 
@@ -586,7 +640,7 @@ export default function Canvas() {
 
     // Check if already upscaling
     if (imageData.isUpscaling) {
-      toast.error('Image is already being upscaled');
+      toast.error("Image is already being upscaled");
       return;
     }
 
@@ -594,9 +648,9 @@ export default function Canvas() {
     updateImage(imageIndex, { isUpscaling: true });
 
     try {
-      const response = await fetch('/api/upscale', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/upscale", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           imageUrl: imageData.s3Url,
           model: settings.imageUpscalingModel,
@@ -608,7 +662,7 @@ export default function Canvas() {
       if (response.ok) {
         // Load the upscaled image
         const upscaledImg = new window.Image();
-        upscaledImg.crossOrigin = 'anonymous';
+        upscaledImg.crossOrigin = "anonymous";
         upscaledImg.src = data.imageUrl;
         upscaledImg.onload = () => {
           // Update image with upscaled version, keeping transforms
@@ -619,16 +673,16 @@ export default function Canvas() {
             isUpscaling: false,
             // Keep existing transform properties
           });
-          toast.success('Image upscaled successfully!');
+          toast.success("Image upscaled successfully!");
         };
       } else {
         updateImage(imageIndex, { isUpscaling: false });
-        toast.error(data.error || 'Failed to upscale image');
+        toast.error(data.error || "Failed to upscale image");
       }
     } catch (error) {
-      console.error('Upscale error:', error);
+      console.error("Upscale error:", error);
       updateImage(imageIndex, { isUpscaling: false });
-      toast.error('Failed to upscale image');
+      toast.error("Failed to upscale image");
     }
   };
 
@@ -641,7 +695,7 @@ export default function Canvas() {
 
     // Check if already removing background
     if (imageData.isRemovingBackground) {
-      toast.error('Background removal already in progress');
+      toast.error("Background removal already in progress");
       return;
     }
 
@@ -649,9 +703,9 @@ export default function Canvas() {
     updateImage(imageIndex, { isRemovingBackground: true });
 
     try {
-      const response = await fetch('/api/remove-background', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/remove-background", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           imageUrl: imageData.s3Url,
         }),
@@ -662,7 +716,7 @@ export default function Canvas() {
       if (response.ok) {
         // Load the image with removed background
         const processedImg = new window.Image();
-        processedImg.crossOrigin = 'anonymous';
+        processedImg.crossOrigin = "anonymous";
         processedImg.src = data.imageUrl;
         processedImg.onload = () => {
           // Update image with processed version, keeping transforms
@@ -673,22 +727,22 @@ export default function Canvas() {
             isRemovingBackground: false,
             // Keep existing transform properties
           });
-          toast.success('Background removed successfully!');
+          toast.success("Background removed successfully!");
         };
       } else {
         updateImage(imageIndex, { isRemovingBackground: false });
-        toast.error(data.error || 'Failed to remove background');
+        toast.error(data.error || "Failed to remove background");
       }
     } catch (error) {
-      console.error('Remove background error:', error);
+      console.error("Remove background error:", error);
       updateImage(imageIndex, { isRemovingBackground: false });
-      toast.error('Failed to remove background');
+      toast.error("Failed to remove background");
     }
   };
 
   const handleDownloadBoard = async (includeReactions: boolean) => {
     if (!stageRef.current || images.length === 0) {
-      toast.error('No images to download');
+      toast.error("No images to download");
       return;
     }
 
@@ -700,16 +754,20 @@ export default function Canvas() {
 
       // Filter images based on includeReactions parameter
       // Always include assets, only exclude reactions if includeReactions is false
-      const exportableImages = images.map((img, index) => ({ img, index }))
+      const exportableImages = images
+        .map((img, index) => ({ img, index }))
         .filter(({ img }) => includeReactions || !img.isReaction);
 
       if (exportableImages.length === 0) {
-        toast.error('No images to download');
+        toast.error("No images to download");
         return;
       }
 
       // Calculate bounding box of all exportable images (accounting for rotation)
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
 
       exportableImages.forEach(({ img }) => {
         // Use the stored image properties directly
@@ -732,10 +790,10 @@ export default function Canvas() {
             { x: imgX, y: imgY },
             { x: imgX + imgWidth, y: imgY },
             { x: imgX + imgWidth, y: imgY + imgHeight },
-            { x: imgX, y: imgY + imgHeight }
+            { x: imgX, y: imgY + imgHeight },
           ];
 
-          corners.forEach(corner => {
+          corners.forEach((corner) => {
             // Rotate around center
             const dx = corner.x - centerX;
             const dy = corner.y - centerY;
@@ -763,8 +821,8 @@ export default function Canvas() {
       const padding = 50;
       minX -= padding;
       minY -= padding;
-      const exportWidth = width + (padding * 2);
-      const exportHeight = height + (padding * 2);
+      const exportWidth = width + padding * 2;
+      const exportHeight = height + padding * 2;
 
       // Save current stage transforms
       const originalScale = stage.scaleX();
@@ -788,7 +846,7 @@ export default function Canvas() {
       layer.batchDraw(); // Force redraw with new transforms
 
       // Wait a frame to ensure layer has fully redrawn
-      await new Promise(resolve => requestAnimationFrame(resolve));
+      await new Promise((resolve) => requestAnimationFrame(resolve));
 
       // Export from the LAYER with transforms reset (always use 2x quality)
       const dataURL = layer.toDataURL({
@@ -804,7 +862,7 @@ export default function Canvas() {
       stage.position(originalPosition);
 
       // Restore visibility of hidden items
-      hiddenIndices.forEach(index => {
+      hiddenIndices.forEach((index) => {
         const node = imageRefsMap.get(index);
         if (node) node.visible(true);
       });
@@ -812,32 +870,37 @@ export default function Canvas() {
       layer.batchDraw(); // Redraw with restored transforms
 
       // Trigger download
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       const filename = briefId
-        ? `board-${includeReactions ? 'and-notes-' : ''}${briefId}.png`
-        : `board${includeReactions ? '-with-notes' : ''}.png`;
+        ? `board-${includeReactions ? "and-notes-" : ""}${briefId}.png`
+        : `board${includeReactions ? "-with-notes" : ""}.png`;
       link.download = filename;
       link.href = dataURL;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      toast.success(includeReactions ? 'Board downloaded with notes!' : 'Board downloaded!');
+      toast.success(
+        includeReactions ? "Board downloaded with notes!" : "Board downloaded!",
+      );
     } catch (error) {
-      console.error('Download board error:', error);
-      toast.error('Failed to download board');
+      console.error("Download board error:", error);
+      toast.error("Failed to download board");
     }
   };
 
-  const handleSaveCrop = async (croppedBlob: Blob, completedCrop: PixelCrop) => {
+  const handleSaveCrop = async (
+    croppedBlob: Blob,
+    completedCrop: PixelCrop,
+  ) => {
     if (cropImageIndex === null) return;
 
     // Upload to S3
     const formData = new FormData();
-    formData.append('file', croppedBlob, 'cropped.png');
+    formData.append("file", croppedBlob, "cropped.png");
 
-    const response = await fetch('/api/upload', {
-      method: 'POST',
+    const response = await fetch("/api/upload", {
+      method: "POST",
       body: formData,
     });
 
@@ -846,7 +909,7 @@ export default function Canvas() {
     if (response.ok) {
       // Load the new cropped image
       const newImg = new window.Image();
-      newImg.crossOrigin = 'anonymous';
+      newImg.crossOrigin = "anonymous";
       newImg.src = data.s3Url;
       newImg.onload = () => {
         // Update image with new cropped version
@@ -861,7 +924,7 @@ export default function Canvas() {
         setCropImageIndex(null);
       };
     } else {
-      throw new Error(data.error || 'Upload failed');
+      throw new Error(data.error || "Upload failed");
     }
   };
 
@@ -872,19 +935,19 @@ export default function Canvas() {
 
     // Check if we're editing (images selected) or generating
     const selectedImages = selectedIndices
-      .map(index => images[index])
-      .filter(img => img && img.s3Url); // Only images with s3Url (uploaded/generated)
+      .map((index) => images[index])
+      .filter((img) => img && img.s3Url); // Only images with s3Url (uploaded/generated)
 
     const isEditing = selectedImages.length > 0;
 
     // Validate: check if any selected images are still uploading/generating
-    const hasUploadingImages = selectedIndices.some(index => {
+    const hasUploadingImages = selectedIndices.some((index) => {
       const img = images[index];
       return img && (img.uploading || img.isGenerating);
     });
 
     if (hasUploadingImages) {
-      toast.error('Please wait for images to finish uploading/generating');
+      toast.error("Please wait for images to finish uploading/generating");
       return;
     }
 
@@ -893,15 +956,17 @@ export default function Canvas() {
       const editingModel = settings.imageEditingModel;
 
       // Validate flux-kontext with multiple images
-      if (editingModel === 'flux-kontext' && selectedImages.length > 1) {
-        toast.error('flux-kontext only supports 1 reference image. Please select only 1 image or use nano-banana.');
+      if (editingModel === "flux-kontext" && selectedImages.length > 1) {
+        toast.error(
+          "flux-kontext only supports 1 reference image. Please select only 1 image or use nano-banana.",
+        );
         return;
       }
 
-      const imageInputs = selectedImages.map(img => img.s3Url!);
+      const imageInputs = selectedImages.map((img) => img.s3Url!);
 
       // Use a generic placeholder (1:1) for editing
-      const placeholderPath = '/loading/generating_1x1.png';
+      const placeholderPath = "/loading/generating_1x1.png";
       const width = 400;
       const height = 400;
 
@@ -919,7 +984,7 @@ export default function Canvas() {
       const y = centerY + offsetY - height / 2;
 
       const placeholderImage = new window.Image();
-      placeholderImage.crossOrigin = 'anonymous';
+      placeholderImage.crossOrigin = "anonymous";
       placeholderImage.src = placeholderPath;
 
       placeholderImage.onload = () => {
@@ -939,22 +1004,29 @@ export default function Canvas() {
         // Edit image in background
         (async () => {
           try {
-            const response = await fetch('/api/edit', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ prompt: promptText, imageInputs, model: editingModel }),
+            const response = await fetch("/api/edit", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                prompt: promptText,
+                imageInputs,
+                model: editingModel,
+              }),
             });
 
             const data = await response.json();
 
             if (response.ok) {
               const editedImg = new window.Image();
-              editedImg.crossOrigin = 'anonymous';
+              editedImg.crossOrigin = "anonymous";
               editedImg.src = data.imageUrl;
               editedImg.onload = () => {
                 // Use actual image dimensions, scale to max 500px
                 const MAX_SIZE = 500;
-                const scale = Math.min(1, MAX_SIZE / Math.max(editedImg.width, editedImg.height));
+                const scale = Math.min(
+                  1,
+                  MAX_SIZE / Math.max(editedImg.width, editedImg.height),
+                );
                 const scaledWidth = editedImg.width * scale;
                 const scaledHeight = editedImg.height * scale;
 
@@ -966,18 +1038,18 @@ export default function Canvas() {
                   width: scaledWidth,
                   height: scaledHeight,
                 });
-                toast.success('Image edited successfully!');
+                toast.success("Image edited successfully!");
               };
             } else {
               setSelectedIndices([newImageIndex]);
               setTimeout(() => deleteSelectedImages(), 0);
-              toast.error(data.error || 'Failed to edit image');
+              toast.error(data.error || "Failed to edit image");
             }
           } catch (error) {
-            console.error('Edit error:', error);
+            console.error("Edit error:", error);
             setSelectedIndices([newImageIndex]);
             setTimeout(() => deleteSelectedImages(), 0);
-            toast.error('Failed to edit image');
+            toast.error("Failed to edit image");
           }
         })();
       };
@@ -987,97 +1059,100 @@ export default function Canvas() {
       const aspectRatio = settings.defaultAspectRatio;
 
       // Always use square placeholder
-      const placeholderPath = '/loading/generating_1x1.png';
+      const placeholderPath = "/loading/generating_1x1.png";
       const width = 400;
       const height = 400;
 
-    const imageId = crypto.randomUUID();
-    const newImageIndex = images.length;
+      const imageId = crypto.randomUUID();
+      const newImageIndex = images.length;
 
-    // Calculate position in visible viewport
-    // Center of visible area
-    const centerX = (dimensions.width / 2 - stagePosition.x) / zoom;
-    const centerY = (dimensions.height / 2 - stagePosition.y) / zoom;
+      // Calculate position in visible viewport
+      // Center of visible area
+      const centerX = (dimensions.width / 2 - stagePosition.x) / zoom;
+      const centerY = (dimensions.height / 2 - stagePosition.y) / zoom;
 
-    // Add random offset to avoid stacking
-    const offsetX = (Math.random() - 0.5) * 200; // Random offset ±100px
-    const offsetY = (Math.random() - 0.5) * 200;
+      // Add random offset to avoid stacking
+      const offsetX = (Math.random() - 0.5) * 200; // Random offset ±100px
+      const offsetY = (Math.random() - 0.5) * 200;
 
-    const x = centerX + offsetX - width / 2; // Subtract half width to center the image
-    const y = centerY + offsetY - height / 2;
+      const x = centerX + offsetX - width / 2; // Subtract half width to center the image
+      const y = centerY + offsetY - height / 2;
 
-    // Load placeholder PNG
-    const placeholderImage = new window.Image();
-    placeholderImage.crossOrigin = 'anonymous';
-    placeholderImage.src = placeholderPath;
+      // Load placeholder PNG
+      const placeholderImage = new window.Image();
+      placeholderImage.crossOrigin = "anonymous";
+      placeholderImage.src = placeholderPath;
 
-    placeholderImage.onload = () => {
-      // Add placeholder to canvas (no s3Url so it won't be saved)
-      addImage({
-        id: imageId,
-        image: placeholderImage,
-        width,
-        height,
-        isGenerating: true,
-        x,
-        y,
-        rotation: 0,
-        scaleX: 1,
-        scaleY: 1,
-      });
+      placeholderImage.onload = () => {
+        // Add placeholder to canvas (no s3Url so it won't be saved)
+        addImage({
+          id: imageId,
+          image: placeholderImage,
+          width,
+          height,
+          isGenerating: true,
+          x,
+          y,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+        });
 
-      // Generate image in background
-      (async () => {
-        try {
-          const response = await fetch('/api/generate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: promptText, model, aspectRatio }),
-          });
+        // Generate image in background
+        (async () => {
+          try {
+            const response = await fetch("/api/generate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ prompt: promptText, model, aspectRatio }),
+            });
 
-          const data = await response.json();
+            const data = await response.json();
 
-          if (response.ok) {
-            // Load the generated image
-            const generatedImg = new window.Image();
-            generatedImg.crossOrigin = 'anonymous';
-            generatedImg.src = data.imageUrl;
-            generatedImg.onload = () => {
-              // Use actual image dimensions, scale to max 500px
-              const MAX_SIZE = 500;
-              const scale = Math.min(1, MAX_SIZE / Math.max(generatedImg.width, generatedImg.height));
-              const scaledWidth = generatedImg.width * scale;
-              const scaledHeight = generatedImg.height * scale;
+            if (response.ok) {
+              // Load the generated image
+              const generatedImg = new window.Image();
+              generatedImg.crossOrigin = "anonymous";
+              generatedImg.src = data.imageUrl;
+              generatedImg.onload = () => {
+                // Use actual image dimensions, scale to max 500px
+                const MAX_SIZE = 500;
+                const scale = Math.min(
+                  1,
+                  MAX_SIZE / Math.max(generatedImg.width, generatedImg.height),
+                );
+                const scaledWidth = generatedImg.width * scale;
+                const scaledHeight = generatedImg.height * scale;
 
-              updateImage(newImageIndex, {
-                image: generatedImg,
-                s3Url: data.imageUrl,
-                s3Key: data.key,
-                isGenerating: false,
-                width: scaledWidth,
-                height: scaledHeight,
-              });
-              toast.success('Image generated successfully!');
-            };
-          } else {
-            // Remove placeholder on error
+                updateImage(newImageIndex, {
+                  image: generatedImg,
+                  s3Url: data.imageUrl,
+                  s3Key: data.key,
+                  isGenerating: false,
+                  width: scaledWidth,
+                  height: scaledHeight,
+                });
+                toast.success("Image generated successfully!");
+              };
+            } else {
+              // Remove placeholder on error
+              setSelectedIndices([newImageIndex]);
+              setTimeout(() => deleteSelectedImages(), 0);
+              toast.error(data.error || "Failed to generate image");
+            }
+          } catch (error) {
+            console.error("Generate error:", error);
             setSelectedIndices([newImageIndex]);
             setTimeout(() => deleteSelectedImages(), 0);
-            toast.error(data.error || 'Failed to generate image');
+            toast.error("Failed to generate image");
           }
-        } catch (error) {
-          console.error('Generate error:', error);
-          setSelectedIndices([newImageIndex]);
-          setTimeout(() => deleteSelectedImages(), 0);
-          toast.error('Failed to generate image');
-        }
-      })();
-    };
+        })();
+      };
     }
   };
 
   // Get count of selected images with s3Url (ready for editing)
-  const readySelectedCount = selectedIndices.filter(index => {
+  const readySelectedCount = selectedIndices.filter((index) => {
     const img = images[index];
     return img && img.s3Url && !img.uploading && !img.isGenerating;
   }).length;
@@ -1087,9 +1162,12 @@ export default function Canvas() {
     if (selectedIndices.length === 0) return null;
 
     const imageRefsMap = getAllImageRefs();
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
 
-    selectedIndices.forEach(index => {
+    selectedIndices.forEach((index) => {
       const node = imageRefsMap.get(index);
       if (!node) return;
 
@@ -1113,16 +1191,17 @@ export default function Canvas() {
     };
   };
 
-  const selectionBounds = selectedIndices.length > 0 ? getSelectionBounds() : null;
+  const selectionBounds =
+    selectedIndices.length > 0 ? getSelectionBounds() : null;
 
   // Determine what's selected to show appropriate menu options
   const getSelectedItemType = () => {
-    if (selectedIndices.length !== 1) return 'multiple';
+    if (selectedIndices.length !== 1) return "multiple";
     const item = images[selectedIndices[0]];
-    if (!item) return 'none';
-    if (item.reactionType === 'postit') return 'postit';
-    if (item.isReaction) return 'emoji';
-    return 'image';
+    if (!item) return "none";
+    if (item.reactionType === "postit") return "postit";
+    if (item.isReaction) return "emoji";
+    return "image";
   };
 
   const selectedItemType = getSelectedItemType();
@@ -1132,48 +1211,61 @@ export default function Canvas() {
       ref={containerRef}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
-      style={{ width: '100%', height: '100%', background: '#f0f0f0', position: 'relative' }}
+      style={{
+        width: "100%",
+        height: "100%",
+        background: "#f0f0f0",
+        position: "relative",
+      }}
     >
       {/* Top right controls */}
       <div
         style={{
-          position: 'absolute',
-          top: '20px',
-          right: '20px',
-          display: 'flex',
-          gap: '12px',
-          alignItems: 'center',
+          position: "absolute",
+          top: "20px",
+          right: "20px",
+          display: "flex",
+          gap: "12px",
+          alignItems: "center",
           zIndex: 1000,
         }}
       >
         {/* Save status indicator */}
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
+            display: "flex",
+            alignItems: "center",
             opacity: 0.5,
           }}
-          title={saveStatus === 'saved' ? 'Saved' : 'Saving...'}
+          title={saveStatus === "saved" ? "Saved" : "Saving..."}
         >
-          {(saveStatus === 'saving' || saveStatus === 'unsaved') && <Loader2 className="h-4 w-4 animate-spin" />}
-          {saveStatus === 'saved' && <Check className="h-4 w-4" />}
+          {(saveStatus === "saving" || saveStatus === "unsaved") && (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          )}
+          {saveStatus === "saved" && <Check className="h-4 w-4" />}
         </div>
 
         {/* Toggle reactions visibility */}
         <button
           onClick={() => setShowReactions(!showReactions)}
           style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
+            background: "none",
+            border: "none",
+            cursor: "pointer",
             padding: 0,
-            display: 'flex',
-            alignItems: 'center',
+            display: "flex",
+            alignItems: "center",
             opacity: 0.5,
           }}
-          title={showReactions ? 'Hide Notes & Reactions' : 'Show Notes & Reactions'}
+          title={
+            showReactions ? "Hide Notes & Reactions" : "Show Notes & Reactions"
+          }
         >
-          {showReactions ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          {showReactions ? (
+            <Eye className="h-4 w-4" />
+          ) : (
+            <EyeOff className="h-4 w-4" />
+          )}
         </button>
 
         {/* Download board button */}
@@ -1182,12 +1274,12 @@ export default function Canvas() {
             <DropdownMenuTrigger asChild>
               <button
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
                   padding: 0,
-                  display: 'flex',
-                  alignItems: 'center',
+                  display: "flex",
+                  alignItems: "center",
                   opacity: 0.5,
                 }}
                 title="Download Board"
@@ -1210,12 +1302,12 @@ export default function Canvas() {
       {/* Undo/Redo controls */}
       <div
         style={{
-          position: 'absolute',
-          bottom: '20px',
-          left: '20px',
-          display: 'flex',
-          flexDirection: 'row',
-          gap: '8px',
+          position: "absolute",
+          bottom: "20px",
+          left: "20px",
+          display: "flex",
+          flexDirection: "row",
+          gap: "8px",
           zIndex: 1000,
         }}
       >
@@ -1244,12 +1336,12 @@ export default function Canvas() {
       {/* Zoom controls */}
       <div
         style={{
-          position: 'absolute',
-          bottom: '20px',
-          right: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
+          position: "absolute",
+          bottom: "20px",
+          right: "20px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
           zIndex: 1000,
         }}
       >
@@ -1310,7 +1402,7 @@ export default function Canvas() {
             .sort((a, b) => a.imgData.zIndex - b.imgData.zIndex)
             .map(({ imgData, originalIndex }) => {
               // Render post-it note
-              if (imgData.reactionType === 'postit') {
+              if (imgData.reactionType === "postit") {
                 return (
                   <PostItNote
                     key={originalIndex}
@@ -1318,16 +1410,20 @@ export default function Canvas() {
                     y={imgData.y}
                     width={imgData.width}
                     height={imgData.height}
-                    text={imgData.text || ''}
+                    text={imgData.text || ""}
                     rotation={imgData.rotation}
                     scaleX={imgData.scaleX}
                     scaleY={imgData.scaleY}
                     isSelected={selectedIndices.includes(originalIndex)}
-                    onSelect={(e: any) => handleSelect(originalIndex, e)}
-                    onDragEnd={(e: any) => handleImageDragEnd(originalIndex, e)}
-                    onTransformEnd={(e: any) => handleImageTransformEnd(originalIndex, e)}
+                    onSelect={(e: any) => handleSelect(originalIndex, e)} // eslint-disable-line @typescript-eslint/no-explicit-any
+                    onDragEnd={(e: any) => handleImageDragEnd(originalIndex, e)} // eslint-disable-line @typescript-eslint/no-explicit-any
+                    onTransformEnd={(e: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+                      handleImageTransformEnd(originalIndex, e)
+                    }
                     onDoubleClick={() => handleEditPostIt(originalIndex)}
-                    nodeRef={(node: Konva.Group | null) => setImageRef(originalIndex, node as any)}
+                    nodeRef={(node: Konva.Group | null) =>
+                      setImageRef(originalIndex, node as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+                    }
                   />
                 );
               }
@@ -1345,10 +1441,14 @@ export default function Canvas() {
                   scaleX={imgData.scaleX}
                   scaleY={imgData.scaleY}
                   isSelected={selectedIndices.includes(originalIndex)}
-                  onSelect={(e: any) => handleSelect(originalIndex, e)}
-                  onDragEnd={(e: any) => handleImageDragEnd(originalIndex, e)}
-                  onTransformEnd={(e: any) => handleImageTransformEnd(originalIndex, e)}
-                  nodeRef={(node: Konva.Image) => setImageRef(originalIndex, node)}
+                  onSelect={(e: any) => handleSelect(originalIndex, e)} // eslint-disable-line @typescript-eslint/no-explicit-any
+                  onDragEnd={(e: any) => handleImageDragEnd(originalIndex, e)} // eslint-disable-line @typescript-eslint/no-explicit-any
+                  onTransformEnd={(e: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+                    handleImageTransformEnd(originalIndex, e)
+                  }
+                  nodeRef={(node: Konva.Image) =>
+                    setImageRef(originalIndex, node)
+                  }
                   isUpscaling={imgData.isUpscaling}
                   isRemovingBackground={imgData.isRemovingBackground}
                 />
@@ -1357,7 +1457,12 @@ export default function Canvas() {
           <Transformer
             ref={transformerRef}
             keepRatio={true}
-            enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
+            enabledAnchors={[
+              "top-left",
+              "top-right",
+              "bottom-left",
+              "bottom-right",
+            ]}
             boundBoxFunc={(oldBox, newBox) => {
               if (newBox.width < 5 || newBox.height < 5) {
                 return oldBox;
@@ -1371,13 +1476,13 @@ export default function Canvas() {
       {images.length === 0 && (
         <div
           style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontSize: '24px',
-            color: '#666',
-            pointerEvents: 'none',
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            fontSize: "24px",
+            color: "#666",
+            pointerEvents: "none",
           }}
         >
           Drag and drop an image here or use AI to generate one
@@ -1386,7 +1491,7 @@ export default function Canvas() {
       {selectedIndices.length >= 1 && selectionBounds && (
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             left: `${selectionBounds.x * zoom + stagePosition.x + selectionBounds.width * zoom + 10}px`,
             top: `${selectionBounds.y * zoom + stagePosition.y}px`,
           }}
@@ -1395,15 +1500,15 @@ export default function Canvas() {
             <DropdownMenuTrigger asChild>
               <button
                 style={{
-                  background: 'white',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  padding: '8px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  background: "white",
+                  border: "1px solid #ddd",
+                  borderRadius: "4px",
+                  padding: "8px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
                 }}
               >
                 <MoreVertical size={16} />
@@ -1411,61 +1516,63 @@ export default function Canvas() {
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               {/* Post-it note: Edit + Delete */}
-              {selectedItemType === 'postit' && (
+              {selectedItemType === "postit" && (
                 <>
-                  <DropdownMenuItem onClick={() => handleEditPostIt(selectedIndices[0])}>
-                    <Pencil className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem
+                    onClick={() => handleEditPostIt(selectedIndices[0])}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleDelete}>
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    <Trash2 className="mr-2 h-4 w-4" />
                     Delete
                   </DropdownMenuItem>
                 </>
               )}
 
               {/* Emoji sticker: Delete only */}
-              {selectedItemType === 'emoji' && (
+              {selectedItemType === "emoji" && (
                 <DropdownMenuItem onClick={handleDelete}>
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
               )}
 
               {/* Regular image: All options */}
-              {selectedItemType === 'image' && (
+              {selectedItemType === "image" && (
                 <>
                   <DropdownMenuItem onClick={handleOpenCrop}>
-                    <Crop className="h-4 w-4 mr-2" />
+                    <Crop className="mr-2 h-4 w-4" />
                     Crop
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleDownload}>
-                    <Download className="h-4 w-4 mr-2" />
+                    <Download className="mr-2 h-4 w-4" />
                     Download
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleCopyUrl}>
-                    <Link className="h-4 w-4 mr-2" />
+                    <Link className="mr-2 h-4 w-4" />
                     Copy URL
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleUpscale}>
-                    <ArrowUpCircle className="h-4 w-4 mr-2" />
+                    <ArrowUpCircle className="mr-2 h-4 w-4" />
                     Upscale
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleRemoveBackground}>
-                    <Eraser className="h-4 w-4 mr-2" />
+                    <Eraser className="mr-2 h-4 w-4" />
                     Remove Background
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleDelete}>
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    <Trash2 className="mr-2 h-4 w-4" />
                     Delete
                   </DropdownMenuItem>
                 </>
               )}
 
               {/* Multiple items selected: Delete only */}
-              {selectedItemType === 'multiple' && (
+              {selectedItemType === "multiple" && (
                 <DropdownMenuItem onClick={handleDelete}>
-                  <Trash2 className="h-4 w-4 mr-2" />
+                  <Trash2 className="mr-2 h-4 w-4" />
                   Delete ({selectedIndices.length})
                 </DropdownMenuItem>
               )}
@@ -1486,7 +1593,9 @@ export default function Canvas() {
       <CropDialog
         open={showCropDialog}
         onOpenChange={setShowCropDialog}
-        imageUrl={cropImageIndex !== null ? images[cropImageIndex]?.s3Url : undefined}
+        imageUrl={
+          cropImageIndex !== null ? images[cropImageIndex]?.s3Url : undefined
+        }
         onSave={handleSaveCrop}
       />
 
@@ -1494,40 +1603,43 @@ export default function Canvas() {
       <PostItEditDialog
         open={showPostItDialog}
         onOpenChange={setShowPostItDialog}
-        initialText={postItImageIndex !== null ? images[postItImageIndex]?.text : ''}
+        initialText={
+          postItImageIndex !== null ? images[postItImageIndex]?.text : ""
+        }
         onSave={handleSavePostIt}
       />
 
       {/* Generate Island */}
       <div
         style={{
-          position: 'absolute',
-          bottom: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'white',
-          borderRadius: '12px',
-          padding: '16px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          position: "absolute",
+          bottom: "20px",
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "white",
+          borderRadius: "12px",
+          padding: "16px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
           zIndex: 1000,
-          maxWidth: '600px',
-          width: 'calc(100% - 40px)',
+          maxWidth: "600px",
+          width: "calc(100% - 40px)",
         }}
       >
         {readySelectedCount > 0 && (
-          <div className="text-xs text-gray-500 mb-2">
-            {readySelectedCount} image{readySelectedCount !== 1 ? 's' : ''} selected • Using {settings.imageEditingModel}
+          <div className="mb-2 text-xs text-gray-500">
+            {readySelectedCount} image{readySelectedCount !== 1 ? "s" : ""}{" "}
+            selected • Using {settings.imageEditingModel}
           </div>
         )}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           <Textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Describe the image you want to generate..."
-            className="resize-none h-[68px]"
+            className="h-[68px] resize-none"
             style={{ flex: 1 }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
                 handleGenerateImage();
               }

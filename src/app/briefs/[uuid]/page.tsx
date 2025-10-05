@@ -1,13 +1,20 @@
 "use client";
-import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
-import { notFound } from 'next/navigation';
+import { useState, useEffect, use } from "react";
+import { useRouter } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, ChevronRight, Pencil, X, Check, Home } from 'lucide-react';
-import { useCanvasStore } from '@/stores/canvasStore';
-import Canvas from '@/components/canvas/Canvas';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  X,
+  Check,
+  Home,
+} from "lucide-react";
+import { useCanvasStore } from "@/stores/canvasStore";
+import Canvas from "@/components/canvas/Canvas";
 import {
   Select,
   SelectContent,
@@ -16,16 +23,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export default function BriefCanvas({ params }: { params: Promise<{ uuid: string }> }) {
+export default function BriefCanvas({
+  params,
+}: {
+  params: Promise<{ uuid: string }>;
+}) {
   const { uuid } = use(params);
   const router = useRouter();
 
-  const { loadBrief, isLoading, saveToDatabase, settings, updateSettings } = useCanvasStore();
+  const { loadBrief, isLoading, saveToDatabase, settings, updateSettings } =
+    useCanvasStore();
 
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [editingName, setEditingName] = useState('');
-  const [editingDescription, setEditingDescription] = useState('');
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [editingName, setEditingName] = useState("");
+  const [editingDescription, setEditingDescription] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [briefNotFound, setBriefNotFound] = useState(false);
@@ -35,6 +47,7 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
   useEffect(() => {
     loadBrief(uuid);
     fetchBrief();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uuid, loadBrief]);
 
   // Autosave canvas every 5 seconds
@@ -52,12 +65,12 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
       if (response.ok) {
         const data = await response.json();
         setName(data.name);
-        setDescription(data.description || '');
+        setDescription(data.description || "");
       } else if (response.status === 404) {
         setBriefNotFound(true);
       }
     } catch (error) {
-      console.error('Failed to fetch brief:', error);
+      console.error("Failed to fetch brief:", error);
     }
   };
 
@@ -73,8 +86,8 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
   const handleSaveName = async () => {
     try {
       const response = await fetch(`/api/briefs/${uuid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: editingName }),
       });
 
@@ -83,12 +96,12 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
         setIsEditingName(false);
       }
     } catch (error) {
-      console.error('Failed to save name:', error);
+      console.error("Failed to save name:", error);
     }
   };
 
   const handleCancelName = () => {
-    setEditingName('');
+    setEditingName("");
     setIsEditingName(false);
   };
 
@@ -100,8 +113,8 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
   const handleSaveDescription = async () => {
     try {
       const response = await fetch(`/api/briefs/${uuid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: editingDescription }),
       });
 
@@ -110,12 +123,12 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
         setIsEditingDescription(false);
       }
     } catch (error) {
-      console.error('Failed to save description:', error);
+      console.error("Failed to save description:", error);
     }
   };
 
   const handleCancelDescription = () => {
-    setEditingDescription('');
+    setEditingDescription("");
     setIsEditingDescription(false);
   };
 
@@ -125,7 +138,7 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
 
   if (isLoading) {
     return (
-      <div className="w-screen h-screen bg-gray-50 flex items-center justify-center text-lg text-gray-600">
+      <div className="flex h-screen w-screen items-center justify-center bg-gray-50 text-lg text-gray-600">
         Loading your board...
       </div>
     );
@@ -135,13 +148,13 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
     <div className="flex h-screen">
       {/* Sidebar */}
       {!sidebarCollapsed && (
-        <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="flex w-80 flex-col border-r border-gray-200 bg-white">
+          <div className="flex items-center justify-between border-b border-gray-200 p-4">
             <div className="flex-1">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push('/')}
+                onClick={() => router.push("/")}
               >
                 <Home className="h-4 w-4" />
               </Button>
@@ -156,10 +169,12 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
             </Button>
           </div>
 
-          <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+          <div className="flex-1 space-y-4 overflow-y-auto p-4">
             {/* Name field */}
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-2 block">Name</label>
+              <label className="mb-2 block text-xs font-medium text-gray-700">
+                Name
+              </label>
               {isEditingName ? (
                 <div className="space-y-2">
                   <Input
@@ -169,22 +184,31 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
                     autoFocus
                   />
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={handleSaveName} className="flex-1">
-                      <Check className="h-4 w-4 mr-1" />
+                    <Button
+                      size="sm"
+                      onClick={handleSaveName}
+                      className="flex-1"
+                    >
+                      <Check className="mr-1 h-4 w-4" />
                       Save
                     </Button>
-                    <Button size="sm" variant="outline" onClick={handleCancelName} className="flex-1">
-                      <X className="h-4 w-4 mr-1" />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCancelName}
+                      className="flex-1"
+                    >
+                      <X className="mr-1 h-4 w-4" />
                       Cancel
                     </Button>
                   </div>
                 </div>
               ) : (
                 <div
-                  className="px-3 py-2 rounded-md hover:bg-gray-50 cursor-pointer flex items-center justify-between group"
+                  className="group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 hover:bg-gray-50"
                   onClick={handleEditName}
                 >
-                  <span className="text-sm">{name || 'Click to add name'}</span>
+                  <span className="text-sm">{name || "Click to add name"}</span>
                   <Pencil className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100" />
                 </div>
               )}
@@ -192,111 +216,144 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
 
             {/* Details field */}
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-2 block">Details</label>
+              <label className="mb-2 block text-xs font-medium text-gray-700">
+                Details
+              </label>
               {isEditingDescription ? (
                 <div className="space-y-2">
                   <Textarea
                     value={editingDescription}
-                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditingDescription(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                      setEditingDescription(e.target.value)
+                    }
                     placeholder="Brief details"
                     rows={4}
                     autoFocus
                   />
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={handleSaveDescription} className="flex-1">
-                      <Check className="h-4 w-4 mr-1" />
+                    <Button
+                      size="sm"
+                      onClick={handleSaveDescription}
+                      className="flex-1"
+                    >
+                      <Check className="mr-1 h-4 w-4" />
                       Save
                     </Button>
-                    <Button size="sm" variant="outline" onClick={handleCancelDescription} className="flex-1">
-                      <X className="h-4 w-4 mr-1" />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCancelDescription}
+                      className="flex-1"
+                    >
+                      <X className="mr-1 h-4 w-4" />
                       Cancel
                     </Button>
                   </div>
                 </div>
               ) : (
                 <div
-                  className="px-3 py-2 rounded-md hover:bg-gray-50 cursor-pointer max-h-[200px] overflow-y-auto group"
+                  className="group max-h-[200px] cursor-pointer overflow-y-auto rounded-md px-3 py-2 hover:bg-gray-50"
                   onClick={handleEditDescription}
                 >
                   <div className="flex items-start justify-between">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap flex-1">
-                      {description || 'Click to add details'}
+                    <p className="flex-1 text-sm whitespace-pre-wrap text-gray-700">
+                      {description || "Click to add details"}
                     </p>
-                    <Pencil className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100 ml-2 flex-shrink-0" />
+                    <Pencil className="ml-2 h-3 w-3 flex-shrink-0 text-gray-400 opacity-0 group-hover:opacity-100" />
                   </div>
                 </div>
               )}
             </div>
 
             {/* Settings */}
-            <div className="border-t border-gray-200 pt-4 mt-4">
+            <div className="mt-4 border-t border-gray-200 pt-4">
               <details open>
-                <summary className="text-sm font-medium text-gray-700 mb-3 cursor-pointer">
+                <summary className="mb-3 cursor-pointer text-sm font-medium text-gray-700">
                   Settings
                 </summary>
                 <div className="space-y-2">
                   <div>
-                    <label className="text-xs font-medium text-gray-500 mb-2 block">
+                    <label className="mb-2 block text-xs font-medium text-gray-500">
                       Image Generation Model
                     </label>
                     <Select
                       value={settings.imageGenerationModel}
-                      onValueChange={(value) => handleSettingChange('imageGenerationModel', value)}
+                      onValueChange={(value) =>
+                        handleSettingChange("imageGenerationModel", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="imagen-4-ultra">imagen-4-ultra</SelectItem>
-                        <SelectItem value="flux-pro-1-1">flux-pro-1-1</SelectItem>
-                        <SelectItem value="flux-schnell">flux-schnell (fast)</SelectItem>
+                        <SelectItem value="imagen-4-ultra">
+                          imagen-4-ultra
+                        </SelectItem>
+                        <SelectItem value="flux-pro-1-1">
+                          flux-pro-1-1
+                        </SelectItem>
+                        <SelectItem value="flux-schnell">
+                          flux-schnell (fast)
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium text-gray-500 mb-2 block">
+                    <label className="mb-2 block text-xs font-medium text-gray-500">
                       Image Editing Model
                     </label>
                     <Select
                       value={settings.imageEditingModel}
-                      onValueChange={(value) => handleSettingChange('imageEditingModel', value)}
+                      onValueChange={(value) =>
+                        handleSettingChange("imageEditingModel", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="nano-banana">nano-banana</SelectItem>
-                        <SelectItem value="flux-kontext">flux-kontext-pro</SelectItem>
+                        <SelectItem value="flux-kontext">
+                          flux-kontext-pro
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium text-gray-500 mb-2 block">
+                    <label className="mb-2 block text-xs font-medium text-gray-500">
                       Image Upscaling Model
                     </label>
                     <Select
                       value={settings.imageUpscalingModel}
-                      onValueChange={(value) => handleSettingChange('imageUpscalingModel', value)}
+                      onValueChange={(value) =>
+                        handleSettingChange("imageUpscalingModel", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="topaz-image-upscaler">topaz-image-upscaler</SelectItem>
-                        <SelectItem value="clarity-upscaler">clarity-upscaler</SelectItem>
+                        <SelectItem value="topaz-image-upscaler">
+                          topaz-image-upscaler
+                        </SelectItem>
+                        <SelectItem value="clarity-upscaler">
+                          clarity-upscaler
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div>
-                    <label className="text-xs font-medium text-gray-500 mb-2 block">
+                    <label className="mb-2 block text-xs font-medium text-gray-500">
                       Default Aspect Ratio
                     </label>
                     <Select
                       value={settings.defaultAspectRatio}
-                      onValueChange={(value) => handleSettingChange('defaultAspectRatio', value)}
+                      onValueChange={(value) =>
+                        handleSettingChange("defaultAspectRatio", value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -313,23 +370,36 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
             </div>
 
             {/* Reactions & Notes */}
-            <div className="border-t border-gray-200 pt-4 mt-4">
+            <div className="mt-4 border-t border-gray-200 pt-4">
               <details open>
-                <summary className="text-sm font-medium text-gray-700 mb-3 cursor-pointer">
+                <summary className="mb-3 cursor-pointer text-sm font-medium text-gray-700">
                   Reactions & Notes
                 </summary>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-medium text-gray-500 mb-2 block">Stickers</label>
+                    <label className="mb-2 block text-xs font-medium text-gray-500">
+                      Stickers
+                    </label>
                     <div className="grid grid-cols-5 gap-2">
-                      {['❤️', '👍', '👎', '🔥', '✨', '❓', '❌', '🤔', '⭐', '📝'].map((emoji) => (
+                      {[
+                        "❤️",
+                        "👍",
+                        "👎",
+                        "🔥",
+                        "✨",
+                        "❓",
+                        "❌",
+                        "🤔",
+                        "⭐",
+                        "📝",
+                      ].map((emoji) => (
                         <div
                           key={emoji}
                           draggable="true"
                           onDragStart={(e) => {
-                            e.dataTransfer.setData('sticker', emoji);
+                            e.dataTransfer.setData("sticker", emoji);
                           }}
-                          className="text-2xl cursor-move hover:scale-110 transition-transform flex items-center justify-center p-2 rounded hover:bg-gray-100"
+                          className="flex cursor-move items-center justify-center rounded p-2 text-2xl transition-transform hover:scale-110 hover:bg-gray-100"
                         >
                           {emoji}
                         </div>
@@ -341,32 +411,47 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
             </div>
 
             {/* Assets */}
-            <div className="border-t border-gray-200 pt-4 mt-4">
+            <div className="mt-4 border-t border-gray-200 pt-4">
               <details open>
-                <summary className="text-sm font-medium text-gray-700 mb-3 cursor-pointer">
+                <summary className="mb-3 cursor-pointer text-sm font-medium text-gray-700">
                   Assets
                 </summary>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { url: 'https://placehold.co/150x150/FF6B6B/FFFFFF?text=Logo', label: 'Logo' },
-                    { url: 'https://placehold.co/150x150/4ECDC4/FFFFFF?text=Brand', label: 'Brand' },
-                    { url: 'https://placehold.co/150x150/45B7D1/FFFFFF?text=Icon', label: 'Icon' },
-                    { url: 'https://placehold.co/150x150/96CEB4/FFFFFF?text=Badge', label: 'Badge' },
+                    {
+                      url: "https://placehold.co/150x150/FF6B6B/FFFFFF?text=Logo",
+                      label: "Logo",
+                    },
+                    {
+                      url: "https://placehold.co/150x150/4ECDC4/FFFFFF?text=Brand",
+                      label: "Brand",
+                    },
+                    {
+                      url: "https://placehold.co/150x150/45B7D1/FFFFFF?text=Icon",
+                      label: "Icon",
+                    },
+                    {
+                      url: "https://placehold.co/150x150/96CEB4/FFFFFF?text=Badge",
+                      label: "Badge",
+                    },
                   ].map((asset) => (
                     <div
                       key={asset.url}
                       draggable="true"
                       onDragStart={(e) => {
-                        e.dataTransfer.setData('asset', asset.url);
+                        e.dataTransfer.setData("asset", asset.url);
                       }}
-                      className="cursor-move hover:opacity-80 transition-opacity"
+                      className="cursor-move transition-opacity hover:opacity-80"
                     >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={asset.url}
                         alt={asset.label}
-                        className="w-full h-20 object-cover rounded border border-gray-200"
+                        className="h-20 w-full rounded border border-gray-200 object-cover"
                       />
-                      <p className="text-xs text-gray-500 mt-1 text-center">{asset.label}</p>
+                      <p className="mt-1 text-center text-xs text-gray-500">
+                        {asset.label}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -378,7 +463,7 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
 
       {/* Sidebar toggle button (when collapsed) */}
       {sidebarCollapsed && (
-        <div className="bg-white border-r border-gray-200">
+        <div className="border-r border-gray-200 bg-white">
           <Button
             variant="ghost"
             size="icon"
@@ -391,7 +476,7 @@ export default function BriefCanvas({ params }: { params: Promise<{ uuid: string
       )}
 
       {/* Canvas */}
-      <div className="flex-1 min-w-[600px]">
+      <div className="min-w-[600px] flex-1">
         <Canvas />
       </div>
     </div>

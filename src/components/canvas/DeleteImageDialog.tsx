@@ -33,14 +33,21 @@ export default function DeleteImageDialog({
         <AlertDialogOverlay style={{ zIndex: 9999 }} />
         <AlertDialogContent style={{ zIndex: 10000 }}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {isMultiple ? `${count} Images` : 'Image'}</AlertDialogTitle>
+            <AlertDialogTitle>
+              Delete {isMultiple ? `${count} Images` : "Image"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {isMultiple ? `these ${count} images` : 'this image'}? This action cannot be undone.
+              Are you sure you want to delete{" "}
+              {isMultiple ? `these ${count} images` : "this image"}? This action
+              cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={onConfirm} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogAction
+              onClick={onConfirm}
+              className="bg-red-600 hover:bg-red-700"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

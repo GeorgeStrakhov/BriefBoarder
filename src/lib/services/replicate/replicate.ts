@@ -8,6 +8,7 @@ const replicate = new Replicate({
 // Model registry with abstraction layer
 interface ModelConfig {
   replicateId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   buildInput: (prompt: string, aspectRatio: string) => Record<string, any>;
 }
 
@@ -64,7 +65,12 @@ export interface ImageGenerationResult {
 interface EditingModelConfig {
   replicateId: string;
   maxImages: number;
-  buildInput: (prompt: string, imageInputs: string[], outputFormat: string) => Record<string, any>;
+  buildInput: (
+    prompt: string,
+    imageInputs: string[],
+    outputFormat: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ) => Record<string, any>;
 }
 
 const IMAGE_EDITING_MODELS: Record<string, EditingModelConfig> = {
@@ -127,7 +133,10 @@ export async function generateImage(
     const input = modelConfig.buildInput(prompt, aspectRatio);
 
     // Run the model
-    const output = await replicate.run(modelConfig.replicateId as `${string}/${string}`, { input });
+    const output = await replicate.run(
+      modelConfig.replicateId as `${string}/${string}`,
+      { input },
+    );
 
     // Handle different output formats (some models return arrays, some return objects)
     let replicateUrl: string;
@@ -197,7 +206,7 @@ export async function editImage(
     // Validate image count
     if (imageInputs.length > modelConfig.maxImages) {
       throw new Error(
-        `${model} supports maximum ${modelConfig.maxImages} image(s), but ${imageInputs.length} provided`
+        `${model} supports maximum ${modelConfig.maxImages} image(s), but ${imageInputs.length} provided`,
       );
     }
 
@@ -205,7 +214,10 @@ export async function editImage(
     const input = modelConfig.buildInput(prompt, imageInputs, outputFormat);
 
     // Run the model
-    const output = await replicate.run(modelConfig.replicateId as `${string}/${string}`, { input });
+    const output = await replicate.run(
+      modelConfig.replicateId as `${string}/${string}`,
+      { input },
+    );
 
     if (!output || typeof output !== "object" || !("url" in output)) {
       throw new Error("Invalid response from Replicate API");
@@ -245,6 +257,7 @@ export function getMaxImagesForModel(model: string): number {
 // Image upscaling model registry
 interface UpscalingModelConfig {
   replicateId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   buildInput: (imageUrl: string) => Record<string, any>;
 }
 
@@ -263,11 +276,13 @@ const IMAGE_UPSCALING_MODELS: Record<string, UpscalingModelConfig> = {
     }),
   },
   "clarity-upscaler": {
-    replicateId: "philz1337x/clarity-upscaler:dfad41707589d68ecdccd1dfa600d55a208f9310748e44bfe35b4a6291453d5e",
+    replicateId:
+      "philz1337x/clarity-upscaler:dfad41707589d68ecdccd1dfa600d55a208f9310748e44bfe35b4a6291453d5e",
     buildInput: (imageUrl) => ({
       seed: 1337,
       image: imageUrl,
-      prompt: "masterpiece, best quality, highres, <lora:more_details:0.5> <lora:SDXLrender_v2.0:1>",
+      prompt:
+        "masterpiece, best quality, highres, <lora:more_details:0.5> <lora:SDXLrender_v2.0:1>",
       dynamic: 6,
       handfix: "disabled",
       pattern: false,
@@ -283,7 +298,8 @@ const IMAGE_UPSCALING_MODELS: Record<string, UpscalingModelConfig> = {
       output_format: "png",
       tiling_height: 144,
       custom_sd_model: "",
-      negative_prompt: "(worst quality, low quality, normal quality:2) JuggernautNegative-neg",
+      negative_prompt:
+        "(worst quality, low quality, normal quality:2) JuggernautNegative-neg",
       num_inference_steps: 18,
       downscaling_resolution: 768,
     }),
@@ -322,7 +338,10 @@ export async function upscaleImage(
     const input = modelConfig.buildInput(imageUrl);
 
     // Run the model
-    const output = await replicate.run(modelConfig.replicateId as `${string}/${string}`, { input });
+    const output = await replicate.run(
+      modelConfig.replicateId as `${string}/${string}`,
+      { input },
+    );
 
     // Handle different output formats (some models return arrays, some return objects)
     let replicateUrl: string;
@@ -348,7 +367,8 @@ export async function upscaleImage(
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const extension = model === "clarity-upscaler" ? "png" : "jpg";
-    const contentType = model === "clarity-upscaler" ? "image/png" : "image/jpeg";
+    const contentType =
+      model === "clarity-upscaler" ? "image/png" : "image/jpeg";
     const filename = `${model}-${timestamp}.${extension}`;
 
     const uploadResult = await uploadFromUrl(replicateUrl, filename, {
@@ -384,10 +404,7 @@ export interface RemoveBackgroundResult {
 export async function removeBackground(
   options: RemoveBackgroundOptions,
 ): Promise<RemoveBackgroundResult> {
-  const {
-    imageUrl,
-    folder = "background-removed",
-  } = options;
+  const { imageUrl, folder = "background-removed" } = options;
 
   try {
     const input = {

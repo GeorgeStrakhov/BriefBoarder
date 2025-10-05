@@ -9,12 +9,14 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 ## Commands
 
 ### Development
+
 - `pnpm dev` - Start development server with Turbopack
 - `pnpm build` - Build for production with Turbopack
 - `pnpm start` - Start production server
 - `pnpm lint` - Run ESLint
 
 ### Database
+
 - `pnpm db:generate` - Generate Drizzle migrations from schema changes
 - `pnpm db:migrate` - Apply pending migrations to database
 - `pnpm db:studio` - Open Drizzle Studio for database GUI
@@ -24,6 +26,7 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 ### Core State Management
 
 **Canvas Store (`src/stores/canvasStore.ts`)**: Central Zustand store managing all canvas state including:
+
 - Image objects with transform properties (position, rotation, scale, zIndex)
 - Selection state for multi-select operations
 - Undo/redo history (max 50 steps) using serializable snapshots
@@ -31,6 +34,7 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 - Settings for AI models and aspect ratios
 
 **Key architectural decisions**:
+
 - Konva.Image refs stored outside Zustand (in `imageRefsMap`) to prevent re-render loops
 - History system uses serializable snapshots (excludes HTMLImageElement objects)
 - Images must have S3 URLs before being included in history/saves
@@ -39,11 +43,13 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 ### AI Services Layer
 
 **LLM Service (`src/lib/services/llm/llm.ts`)**:
+
 - Structured output: Uses Groq with JSON schema validation and auto-retry
 - Unstructured output: Uses OpenRouter (defaults to Claude Sonnet 4.5)
 - Converts Zod schemas to JSON schema for model constraints
 
 **Image Generation (`src/lib/services/replicate/replicate.ts`)**:
+
 - Model registry pattern abstracts different Replicate models
 - Generation models: `imagen-4-ultra` (default), `flux-pro-1-1`, `flux-schnell`
 - Editing models: `nano-banana` (supports up to 8 images), `flux-kontext` (single image)
@@ -52,6 +58,7 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 ### Storage & Database
 
 **S3 Service (`src/lib/services/s3/`)**:
+
 - Uses Cloudflare R2 (S3-compatible)
 - Public CDN endpoint defined in the .env
 - Supports upload from URL or data URI
@@ -62,6 +69,7 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
   - All images loaded with `crossOrigin = 'anonymous'` attribute to enable canvas export
 
 **Database Schema (`src/db/schema/briefs.ts`)**:
+
 - Single `briefs` table with UUID primary key
 - `canvasState` JSONB field stores all image transforms and positions
 - `settings` JSONB field stores per-brief AI model preferences
@@ -79,6 +87,7 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 ### Canvas Components
 
 **Canvas.tsx**: Main Konva stage component with:
+
 - Transformer for multi-select resize/rotate
 - Infinite canvas with pan/zoom
 - Keyboard shortcuts (Delete, Cmd+Z/Cmd+Shift+Z for undo/redo)
@@ -111,6 +120,7 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 ### Working with Canvas Images
 
 Images flow through these states:
+
 1. Local HTMLImageElement created (no S3 URL)
 2. Upload to S3 initiated (`uploading: true`)
 3. Upload completes, S3 URL assigned

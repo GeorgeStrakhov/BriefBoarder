@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogPortal,
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { X } from 'lucide-react';
+import { X } from "lucide-react";
 
 interface PostItEditDialogProps {
   open: boolean;
@@ -23,7 +23,7 @@ interface PostItEditDialogProps {
 export default function PostItEditDialog({
   open,
   onOpenChange,
-  initialText = '',
+  initialText = "",
   onSave,
 }: PostItEditDialogProps) {
   const [text, setText] = useState(initialText);
@@ -65,13 +65,8 @@ export default function PostItEditDialog({
           />
 
           <DialogFooter>
-            <Button onClick={handleSave}>
-              Save
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button onClick={handleSave}>Save</Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
           </DialogFooter>
