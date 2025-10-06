@@ -1873,10 +1873,16 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
           width: "calc(100% - 40px)",
         }}
       >
-        {readySelectedCount > 0 && (
+        {(settings.caaEnabled || readySelectedCount > 0) && (
           <div className="mb-2 text-xs text-gray-500">
-            {readySelectedCount} image{readySelectedCount !== 1 ? "s" : ""}{" "}
-            selected • Using {settings.imageEditingModel}
+            {settings.caaEnabled && `Assistant active (${settings.caaApproach})`}
+            {settings.caaEnabled && readySelectedCount > 0 && " • "}
+            {readySelectedCount > 0 && (
+              <>
+                {readySelectedCount} image{readySelectedCount !== 1 ? "s" : ""}{" "}
+                selected • Using {settings.imageEditingModel}
+              </>
+            )}
           </div>
         )}
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>

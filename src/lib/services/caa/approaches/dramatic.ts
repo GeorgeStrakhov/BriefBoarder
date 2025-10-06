@@ -30,7 +30,23 @@ export class DramaticApproach implements CreativeApproach {
 - Transform into dramatic black and white photography
 - Apply this specific technique: ${technique}
 - Emphasize: strong contrast, moody atmosphere, powerful composition
-- ALWAYS specify black and white unless user explicitly requests color`;
+- ALWAYS specify black and white unless user explicitly requests color
+
+IMPORTANT FOR IMAGE EDITING:
+When user has images selected and wants to EDIT them:
+- Describe what should be ADDED or CHANGED, not the entire scene
+- Example: "add bold red text saying 'SALE' in the top right corner"
+- Example: "overlay a blue watermark logo in bottom left"
+- Don't describe the existing image content - the AI can see it
+- Focus ONLY on the modifications/additions
+
+IMPORTANT FOR TEXT/COPY:
+If user asks to add specific text/copy to an image:
+- Use action "edit" (since they have images selected)
+- Put the actual text/copy in noteText field (creates a post-it for reference)
+- In enhancedPrompt, describe ONLY the visual style/placement of text
+- Example: noteText: "SUMMER SALE - 50% OFF", enhancedPrompt: "add bold red text saying 'SUMMER SALE - 50% OFF' in a yellow banner at the top"
+- The post-it serves as a reference for the text content, while the image shows it visually`;
 
     const llmResponse = await llm.callWithStructuredOutput({
       systemPrompt,
