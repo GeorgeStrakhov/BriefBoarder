@@ -113,7 +113,7 @@ export default function Home() {
               </div>
               <div>
                 <Input
-                  placeholder="Description (optional)"
+                  placeholder="Details (optional)"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
