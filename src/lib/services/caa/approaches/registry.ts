@@ -29,8 +29,12 @@ export function getApproach(id: string): CreativeApproach {
 /**
  * List all available approaches
  */
-export function listApproaches(): Array<{ id: string; name: string; description: string }> {
-  return Object.values(APPROACHES).map(a => ({
+export function listApproaches(): Array<{
+  id: string;
+  name: string;
+  description: string;
+}> {
+  return Object.values(APPROACHES).map((a) => ({
     id: a.id,
     name: a.name,
     description: a.description,

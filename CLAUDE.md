@@ -60,6 +60,7 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 The Creative Assistant enhances user prompts with creative interpretation and intelligent decision-making. It determines whether to generate, edit, or provide informational responses based on context.
 
 **Architecture**:
+
 - **LLM Client** (`llm-client.ts`): Direct OpenRouter API calls with structured output
   - Uses `response_format: { type: "json_object" }` for guaranteed JSON responses
   - Zod schema validation with retry logic (3 attempts, exponential backoff)
@@ -70,12 +71,14 @@ The Creative Assistant enhances user prompts with creative interpretation and in
   - **Dramatic**: Bold B&W photography with cinematic lighting and randomized techniques
 
 **Actions**:
+
 - `generate` - Create new images from scratch
 - `edit` - Modify existing selected images
 - `answer` - Provide informational responses without image generation
 - `generate_and_note` - Generate image + create reference post-it note
 
 **Key Patterns**:
+
 - **Nano-Banana Editing**: When editing images, prompts describe CHANGES/ADDITIONS only, not the full scene
   - Example: "add bold red text saying 'SALE' in the top right corner" ✓
   - Example: "a scenic mountain landscape with red text" ✗ (describes full image)
@@ -84,6 +87,7 @@ The Creative Assistant enhances user prompts with creative interpretation and in
 - **Asset Integration**: Can reference and include custom assets in edits via `includeAssets` field
 
 **Settings**:
+
 - Stored in localStorage (per-user, not synced via Liveblocks)
 - Toggle on/off, select approach (simple/dramatic), choose LLM model
 - Default model: GPT-4.1 Mini (also supports Claude Sonnet 4)
@@ -177,6 +181,7 @@ The Creative Assistant enhances user prompts with creative interpretation and in
 - **Auth**: `/api/liveblocks-auth` endpoint provides room access tokens
 
 **What syncs in realtime**:
+
 - Image positions, rotations, scales
 - Post-it notes (text and colors)
 - Stickers and reactions
@@ -185,6 +190,7 @@ The Creative Assistant enhances user prompts with creative interpretation and in
 - User selections (see what others are selecting via Presence)
 
 **What stays local**:
+
 - Zoom level and pan position (independent viewports)
 - Undo/redo history (can only undo your own changes)
 - HTMLImageElement objects (reconstructed from S3 URLs)

@@ -16,12 +16,16 @@ export function getCDNBaseUrl(): string {
     // Client-side - must use NEXT_PUBLIC_ prefix
     const url = process.env.NEXT_PUBLIC_S3_ENDPOINT || "";
     if (!url) {
-      console.warn("NEXT_PUBLIC_S3_ENDPOINT not set - assets may not load correctly");
+      console.warn(
+        "NEXT_PUBLIC_S3_ENDPOINT not set - assets may not load correctly",
+      );
     }
     return url;
   }
   // Server-side
-  return process.env.S3_PUBLIC_ENDPOINT || process.env.NEXT_PUBLIC_S3_ENDPOINT || "";
+  return (
+    process.env.S3_PUBLIC_ENDPOINT || process.env.NEXT_PUBLIC_S3_ENDPOINT || ""
+  );
 }
 
 // Get preset assets (lazy evaluation so env vars are available)

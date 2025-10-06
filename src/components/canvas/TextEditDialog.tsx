@@ -12,7 +12,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { X, AlignLeft, AlignCenter, AlignRight, Bold, Italic } from "lucide-react";
+import {
+  X,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Bold,
+  Italic,
+} from "lucide-react";
 
 const AVAILABLE_FONTS = [
   { name: "Geist", value: "var(--font-geist-sans)" },
@@ -80,7 +87,17 @@ export default function TextEditDialog({
       setAlign(initialAlign);
       setShadow(initialShadow);
     }
-  }, [open, initialText, initialFontFamily, initialLineHeight, initialBold, initialItalic, initialColor, initialAlign, initialShadow]);
+  }, [
+    open,
+    initialText,
+    initialFontFamily,
+    initialLineHeight,
+    initialBold,
+    initialItalic,
+    initialColor,
+    initialAlign,
+    initialShadow,
+  ]);
 
   const handleSave = () => {
     if (!text.trim()) return; // Prevent empty text
@@ -137,7 +154,7 @@ export default function TextEditDialog({
                 id="font-family"
                 value={fontFamily}
                 onChange={(e) => setFontFamily(e.target.value)}
-                className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus:ring-ring flex h-10 w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {AVAILABLE_FONTS.map((font) => (
                   <option key={font.value} value={font.value}>
@@ -149,7 +166,9 @@ export default function TextEditDialog({
 
             {/* Line height */}
             <div>
-              <Label htmlFor="line-height">Line Height ({lineHeight.toFixed(1)})</Label>
+              <Label htmlFor="line-height">
+                Line Height ({lineHeight.toFixed(1)})
+              </Label>
               <input
                 id="line-height"
                 type="range"
@@ -203,7 +222,7 @@ export default function TextEditDialog({
                   value={color}
                   onChange={(e) => setColor(e.target.value)}
                   placeholder="#000000"
-                  className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus:ring-ring flex h-10 flex-1 rounded-md border px-3 py-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus:ring-ring flex h-10 flex-1 rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
             </div>

@@ -11,14 +11,14 @@ export async function POST(req: NextRequest) {
     if (!context.userPrompt || !context.userPrompt.trim()) {
       return NextResponse.json(
         { error: "User prompt is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (context.selectedImages.length > 8) {
       return NextResponse.json(
         { error: "Maximum 8 images can be selected" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -32,15 +32,13 @@ export async function POST(req: NextRequest) {
     const result = await approach.execute(context, llm);
 
     return NextResponse.json(result);
-
   } catch (error) {
     console.error("CAA error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "CAA processing failed",
+        error: error instanceof Error ? error.message : "CAA processing failed",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

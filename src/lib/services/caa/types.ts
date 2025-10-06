@@ -45,19 +45,28 @@ export interface CAAResult {
 
 // Zod schema for structured LLM response
 export const caaResponseSchema = z.object({
-  action: z.enum(["generate", "edit", "answer", "generate_and_note"]).describe(
-    "The action to take: 'generate' for new images, 'edit' for modifying existing images, 'answer' for questions, 'generate_and_note' for image + explanation"
-  ),
-  enhancedPrompt: z.string().optional().describe(
-    "Enhanced prompt for image generation or editing (required for generate/edit/generate_and_note)"
-  ),
-  includeAssets: z.array(z.string()).optional().describe(
-    'Asset names to include when editing (e.g., ["logo", "brand-pattern"])'
-  ),
-  noteText: z.string().optional().describe(
-    "Text for post-it note (required for answer/generate_and_note)"
-  ),
-  reasoning: z.string().describe(
-    "Brief explanation of your decision and enhancements"
-  ),
+  action: z
+    .enum(["generate", "edit", "answer", "generate_and_note"])
+    .describe(
+      "The action to take: 'generate' for new images, 'edit' for modifying existing images, 'answer' for questions, 'generate_and_note' for image + explanation",
+    ),
+  enhancedPrompt: z
+    .string()
+    .optional()
+    .describe(
+      "Enhanced prompt for image generation or editing (required for generate/edit/generate_and_note)",
+    ),
+  includeAssets: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Asset names to include when editing (e.g., ["logo", "brand-pattern"])',
+    ),
+  noteText: z
+    .string()
+    .optional()
+    .describe("Text for post-it note (required for answer/generate_and_note)"),
+  reasoning: z
+    .string()
+    .describe("Brief explanation of your decision and enhancements"),
 });

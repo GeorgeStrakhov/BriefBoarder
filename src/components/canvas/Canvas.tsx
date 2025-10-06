@@ -66,7 +66,8 @@ function TransformableImage({
   nodeRef,
   isUpscaling,
   isRemovingBackground,
-}: any) {// eslint-disable-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+}: any) {
   const imageRef = useRef<Konva.Image>(null);
 
   useEffect(() => {
@@ -103,7 +104,10 @@ interface CanvasProps {
   briefDescription?: string;
 }
 
-export default function Canvas({ briefName = "", briefDescription = "" }: CanvasProps) {
+export default function Canvas({
+  briefName = "",
+  briefDescription = "",
+}: CanvasProps) {
   // Zustand store
   const {
     images,
@@ -141,8 +145,11 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     if (!self) return true; // Default to leader if not connected yet
 
     const myConnectionId = self.connectionId;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const allConnectionIds = [myConnectionId, ...others.map((o: any) => o.connectionId)];
+    const allConnectionIds = [
+      myConnectionId,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...others.map((o: any) => o.connectionId),
+    ];
     const leaderId = Math.min(...allConnectionIds);
     return myConnectionId === leaderId;
   }, [liveblocks]);
@@ -522,7 +529,10 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     // Check if selected items are reactions/text or regular images
     const selectedItems = selectedIndices.map((i) => images[i]);
     const areReactions = selectedItems.some(
-      (img) => img?.sourceType === "sticker" || img?.sourceType === "postit" || img?.sourceType === "text"
+      (img) =>
+        img?.sourceType === "sticker" ||
+        img?.sourceType === "postit" ||
+        img?.sourceType === "text",
     );
 
     // Find max zIndex within the appropriate category
@@ -530,12 +540,22 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     if (areReactions) {
       // Find max among reactions/text (zIndex >= 10000)
       maxZIndex = images
-        .filter((img) => img.sourceType === "sticker" || img.sourceType === "postit" || img.sourceType === "text")
+        .filter(
+          (img) =>
+            img.sourceType === "sticker" ||
+            img.sourceType === "postit" ||
+            img.sourceType === "text",
+        )
         .reduce((max, img) => Math.max(max, img.zIndex), 9999);
     } else {
       // Find max among regular images (zIndex < 10000)
       maxZIndex = images
-        .filter((img) => img.sourceType !== "sticker" && img.sourceType !== "postit" && img.sourceType !== "text")
+        .filter(
+          (img) =>
+            img.sourceType !== "sticker" &&
+            img.sourceType !== "postit" &&
+            img.sourceType !== "text",
+        )
         .reduce((max, img) => Math.max(max, img.zIndex), -1);
       // Cap at 9998 to leave room
       maxZIndex = Math.min(maxZIndex, 9998 - selectedIndices.length);
@@ -553,7 +573,10 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     // Check if selected items are reactions/text or regular images
     const selectedItems = selectedIndices.map((i) => images[i]);
     const areReactions = selectedItems.some(
-      (img) => img?.sourceType === "sticker" || img?.sourceType === "postit" || img?.sourceType === "text"
+      (img) =>
+        img?.sourceType === "sticker" ||
+        img?.sourceType === "postit" ||
+        img?.sourceType === "text",
     );
 
     // Find min zIndex within the appropriate category
@@ -561,17 +584,30 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     if (areReactions) {
       // Find min among reactions/text (zIndex >= 10000)
       minZIndex = images
-        .filter((img) => img.sourceType === "sticker" || img.sourceType === "postit" || img.sourceType === "text")
+        .filter(
+          (img) =>
+            img.sourceType === "sticker" ||
+            img.sourceType === "postit" ||
+            img.sourceType === "text",
+        )
         .reduce((min, img) => Math.min(min, img.zIndex), 20000);
     } else {
       // Find min among regular images (zIndex < 10000)
       minZIndex = images
-        .filter((img) => img.sourceType !== "sticker" && img.sourceType !== "postit" && img.sourceType !== "text")
+        .filter(
+          (img) =>
+            img.sourceType !== "sticker" &&
+            img.sourceType !== "postit" &&
+            img.sourceType !== "text",
+        )
         .reduce((min, img) => Math.min(min, img.zIndex), 10000);
     }
 
     // Calculate starting zIndex (min - number of items)
-    const startZIndex = Math.max(areReactions ? 10000 : 0, minZIndex - selectedIndices.length);
+    const startZIndex = Math.max(
+      areReactions ? 10000 : 0,
+      minZIndex - selectedIndices.length,
+    );
 
     // Update zIndex for each selected item
     selectedIndices.forEach((index, i) => {
@@ -671,7 +707,7 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     text: string,
     fontFamily: string,
     bold: boolean,
-    italic: boolean
+    italic: boolean,
   ): number => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -759,7 +795,7 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
           config.text,
           config.fontFamily,
           config.bold,
-          config.italic
+          config.italic,
         );
 
         addImage({
@@ -790,7 +826,7 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
         config.text,
         config.fontFamily,
         config.bold,
-        config.italic
+        config.italic,
       );
 
       updateImage(textImageIndex, {
@@ -1081,7 +1117,11 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
       // Always include assets, only exclude reactions if includeReactions is false
       const exportableImages = images
         .map((img, index) => ({ img, index }))
-        .filter(({ img }) => includeReactions || (img.sourceType !== "sticker" && img.sourceType !== "postit"));
+        .filter(
+          ({ img }) =>
+            includeReactions ||
+            (img.sourceType !== "sticker" && img.sourceType !== "postit"),
+        );
 
       if (exportableImages.length === 0) {
         toast.error("No images to download");
@@ -1436,7 +1476,10 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
   };
 
   // Helper: Create AI-generated post-it
-  const createAIPostIt = (text: string, position?: { x: number; y: number }) => {
+  const createAIPostIt = (
+    text: string,
+    position?: { x: number; y: number },
+  ) => {
     // Smart positioning: top-right of selected images bounding box
     const bounds = getSelectionBounds();
 
@@ -1547,7 +1590,7 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
               const MAX_SIZE = 500;
               const scale = Math.min(
                 1,
-                MAX_SIZE / Math.max(generatedImg.width, generatedImg.height)
+                MAX_SIZE / Math.max(generatedImg.width, generatedImg.height),
               );
               const scaledWidth = generatedImg.width * scale;
               const scaledHeight = generatedImg.height * scale;
@@ -1580,14 +1623,14 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
   // Helper: Edit images with given prompt and inputs
   const editImagesWithPrompt = async (
     enhancedPrompt: string,
-    imageInputs: string[]
+    imageInputs: string[],
   ) => {
     const editingModel = settings.imageEditingModel;
 
     // Validate flux-kontext with multiple images
     if (editingModel === "flux-kontext" && imageInputs.length > 1) {
       toast.error(
-        "flux-kontext only supports 1 reference image. Please select only 1 image or use nano-banana."
+        "flux-kontext only supports 1 reference image. Please select only 1 image or use nano-banana.",
       );
       return;
     }
@@ -1653,7 +1696,7 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
               const MAX_SIZE = 500;
               const scale = Math.min(
                 1,
-                MAX_SIZE / Math.max(editedImg.width, editedImg.height)
+                MAX_SIZE / Math.max(editedImg.width, editedImg.height),
               );
               const scaledWidth = editedImg.width * scale;
               const scaledHeight = editedImg.height * scale;
@@ -1691,7 +1734,13 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     // Gather selected images and post-its
     const selectedImages = selectedIndices
       .map((index) => images[index])
-      .filter((img) => img && img.s3Url && img.sourceType !== "postit" && img.sourceType !== "sticker");
+      .filter(
+        (img) =>
+          img &&
+          img.s3Url &&
+          img.sourceType !== "postit" &&
+          img.sourceType !== "sticker",
+      );
 
     const selectedPostits = selectedIndices
       .map((index) => images[index])
@@ -1706,7 +1755,9 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     if (settings.caaEnabled) {
       try {
         // Show loading toast
-        toast.loading("✨ Creative Assistant working...", { id: "creative-assistant" });
+        toast.loading("✨ Creative Assistant working...", {
+          id: "creative-assistant",
+        });
 
         const caaResponse = await fetch("/api/caa", {
           method: "POST",
@@ -1762,14 +1813,17 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
         }
 
         // Continue with generation/editing using enhanced prompt
-        if (caaData.action === "generate" || caaData.action === "generate_and_note") {
+        if (
+          caaData.action === "generate" ||
+          caaData.action === "generate_and_note"
+        ) {
           // Use enhanced prompt for generation
           await generateImageWithPrompt(caaData.enhancedPrompt);
         } else if (caaData.action === "edit") {
           // Use enhanced prompt and imageInputs for editing
           await editImagesWithPrompt(
             caaData.enhancedPrompt,
-            caaData.imageInputs || selectedImages.map((img) => img.s3Url!)
+            caaData.imageInputs || selectedImages.map((img) => img.s3Url!),
           );
         }
 
@@ -1787,7 +1841,13 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     // Check if we're editing (images selected) or generating
     const editableImages = selectedIndices
       .map((index) => images[index])
-      .filter((img) => img && img.s3Url && img.sourceType !== "postit" && img.sourceType !== "sticker");
+      .filter(
+        (img) =>
+          img &&
+          img.s3Url &&
+          img.sourceType !== "postit" &&
+          img.sourceType !== "sticker",
+      );
 
     const isEditing = editableImages.length > 0;
 
@@ -1806,12 +1866,15 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
       // IMAGE EDITING MODE
       // Convert all images to JPEG format (nano-banana doesn't support transparent PNGs)
       const imageInputs = editableImages.map((img) =>
-        transformImageUrl(img.s3Url!, { format: "jpeg" })
+        transformImageUrl(img.s3Url!, { format: "jpeg" }),
       );
-      console.log("Editing with images:", editableImages.map(img => ({
-        sourceType: img.sourceType,
-        url: img.s3Url
-      })));
+      console.log(
+        "Editing with images:",
+        editableImages.map((img) => ({
+          sourceType: img.sourceType,
+          url: img.s3Url,
+        })),
+      );
       await editImagesWithPrompt(promptText, imageInputs);
     } else {
       // IMAGE GENERATION MODE
@@ -1906,7 +1969,13 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
             alignItems: "center",
             opacity: 0.5,
           }}
-          title={isLeader ? (saveStatus === "saved" ? "Saved" : "Saving...") : "Synced"}
+          title={
+            isLeader
+              ? saveStatus === "saved"
+                ? "Saved"
+                : "Saving..."
+              : "Synced"
+          }
         >
           {isLeader ? (
             <>
@@ -2074,7 +2143,12 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
         <Layer>
           {images
             .map((imgData, originalIndex) => ({ imgData, originalIndex }))
-            .filter(({ imgData }) => showReactions || (imgData.sourceType !== "sticker" && imgData.sourceType !== "postit"))
+            .filter(
+              ({ imgData }) =>
+                showReactions ||
+                (imgData.sourceType !== "sticker" &&
+                  imgData.sourceType !== "postit"),
+            )
             .sort((a, b) => a.imgData.zIndex - b.imgData.zIndex)
             .map(({ imgData, originalIndex }) => {
               // Render post-it note
@@ -2132,9 +2206,8 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
                       e: any, // eslint-disable-line @typescript-eslint/no-explicit-any
                     ) => handleImageTransformEnd(originalIndex, e)}
                     onDoubleClick={() => handleEditText(originalIndex)}
-                    nodeRef={
-                      (node: Konva.Text | null) =>
-                        setImageRef(originalIndex, node)
+                    nodeRef={(node: Konva.Text | null) =>
+                      setImageRef(originalIndex, node)
                     }
                   />
                 );
@@ -2459,7 +2532,8 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
       >
         {isMounted && (settings.caaEnabled || readySelectedCount > 0) && (
           <div className="mb-2 text-xs text-gray-500">
-            {settings.caaEnabled && `Assistant active (${settings.caaApproach})`}
+            {settings.caaEnabled &&
+              `Assistant active (${settings.caaApproach})`}
             {settings.caaEnabled && readySelectedCount > 0 && " • "}
             {readySelectedCount > 0 && (
               <>

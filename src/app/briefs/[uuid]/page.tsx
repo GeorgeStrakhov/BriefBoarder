@@ -71,7 +71,8 @@ export default function BriefCanvas({
     // Small delay to ensure Liveblocks middleware is ready
     const timer = setTimeout(() => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const enterRoom = (useCanvasStore as any).getState().liveblocks?.enterRoom;
+      const enterRoom = (useCanvasStore as any).getState().liveblocks
+        ?.enterRoom;
       if (enterRoom) {
         enterRoom(uuid);
       }
@@ -84,7 +85,8 @@ export default function BriefCanvas({
     return () => {
       clearTimeout(timer);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const leaveRoom = (useCanvasStore as any).getState().liveblocks?.leaveRoom;
+      const leaveRoom = (useCanvasStore as any).getState().liveblocks
+        ?.leaveRoom;
       if (leaveRoom) {
         leaveRoom();
       }
@@ -103,8 +105,11 @@ export default function BriefCanvas({
       if (!self) return;
 
       const myConnectionId = self.connectionId;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const allConnectionIds = [myConnectionId, ...others.map((o: any) => o.connectionId)];
+      const allConnectionIds = [
+        myConnectionId,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ...others.map((o: any) => o.connectionId),
+      ];
       const leaderId = Math.min(...allConnectionIds);
       const isLeader = myConnectionId === leaderId;
 
@@ -287,7 +292,9 @@ export default function BriefCanvas({
                   className="group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 hover:bg-gray-50"
                   onClick={handleEditName}
                 >
-                  <span className="text-sm">{briefName || "Click to add name"}</span>
+                  <span className="text-sm">
+                    {briefName || "Click to add name"}
+                  </span>
                   <Pencil className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100" />
                 </div>
               )}
@@ -609,7 +616,7 @@ export default function BriefCanvas({
                       {asset.type === "custom" && (
                         <button
                           onClick={() => handleDeleteAsset(asset.name)}
-                          className="absolute top-1 right-1 rounded bg-red-500 p-1 text-white opacity-0 transition-opacity hover:bg-red-600 group-hover:opacity-100"
+                          className="absolute top-1 right-1 rounded bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-600"
                           title="Delete asset"
                         >
                           <Trash2 className="h-3 w-3" />

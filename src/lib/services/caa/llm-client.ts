@@ -45,7 +45,7 @@ export class LLMClient {
   }) {
     const fullSystemPrompt = this.buildFullSystemPrompt(
       options.systemPrompt,
-      options.context
+      options.context,
     );
 
     const jsonSchema = zodSchemaToJsonSchema(caaResponseSchema);
@@ -68,7 +68,8 @@ Return ONLY the JSON object, no markdown formatting, no backticks, no additional
 
         // Build user message with images if available
         const userMessageContent: Array<
-          { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
+          | { type: "text"; text: string }
+          | { type: "image_url"; image_url: { url: string } }
         > = [];
 
         // Add images first (if any selected)
@@ -127,12 +128,12 @@ Return ONLY the JSON object, no markdown formatting, no backticks, no additional
 
         if (attempt === maxRetries - 1) {
           throw new Error(
-            `Failed to get valid structured response after ${maxRetries} attempts. Last error: ${lastError.message}`
+            `Failed to get valid structured response after ${maxRetries} attempts. Last error: ${lastError.message}`,
           );
         }
 
         await new Promise((resolve) =>
-          setTimeout(resolve, 1000 * (attempt + 1))
+          setTimeout(resolve, 1000 * (attempt + 1)),
         );
       }
     }
@@ -145,7 +146,7 @@ Return ONLY the JSON object, no markdown formatting, no backticks, no additional
    */
   private buildFullSystemPrompt(
     approachPrompt: string,
-    context: CAAContext
+    context: CAAContext,
   ): string {
     return `You are a Creative Approach Agent helping users create visual moodboards and brief boards.
 

@@ -26,7 +26,8 @@ const defaultPreferences: Preferences = {
 };
 
 export function usePreferences() {
-  const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
+  const [preferences, setPreferences] =
+    useState<Preferences>(defaultPreferences);
 
   // Load preferences from localStorage on mount
   useEffect(() => {
@@ -44,7 +45,7 @@ export function usePreferences() {
   // Update a specific preference
   const updatePreference = <K extends keyof Preferences>(
     key: K,
-    value: Preferences[K]
+    value: Preferences[K],
   ) => {
     setPreferences((prev) => {
       const updated = { ...prev, [key]: value };
