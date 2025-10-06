@@ -99,7 +99,7 @@ export default function Home() {
 
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Create New Brief</CardTitle>
+            <CardTitle>Create a new board</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={createBrief} className="space-y-4">
@@ -119,15 +119,12 @@ export default function Home() {
                 />
               </div>
               <Button type="submit" disabled={loading}>
-                {loading ? "Creating..." : "Create Brief"}
+                {loading ? "Creating..." : "Create"}
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        {briefs.length > 0 && (
-          <h2 className="mb-4 text-2xl font-semibold">Your Briefs</h2>
-        )}
         <div className="grid gap-4">
           {briefs.map((brief) => (
             <Card
