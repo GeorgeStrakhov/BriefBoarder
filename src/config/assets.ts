@@ -30,7 +30,7 @@ export function getPresetAssets(): Asset[] {
     {
       name: "logo",
       label: "Logo",
-      url: `${getCDNBaseUrl()}/logo.png`,
+      url: `${getCDNBaseUrl()}/assets/logo.png`,
       type: "preset",
     },
   ];

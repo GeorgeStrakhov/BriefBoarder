@@ -735,12 +735,10 @@ export const useCanvasStore = create<CanvasState>()(
       storageMapping: {
         // Sync these fields across all users
         syncedImages: true, // Serializable version (no HTMLImageElement)
-        zoom: true,
-        stagePosition: true,
         briefName: true, // Collaborative brief name
         briefDescription: true, // Collaborative brief description
         customAssets: true, // Custom user-uploaded assets
-        // NOTE: settings are local (localStorage) - each user has their own preferences
+        // NOTE: zoom, stagePosition, settings are local - each user has their own viewport and preferences
       },
       presenceMapping: {
         // Per-user ephemeral state

@@ -147,6 +147,7 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
   const [showCropDialog, setShowCropDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPostItDialog, setShowPostItDialog] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [cropImageIndex, setCropImageIndex] = useState<number | null>(null);
   const [postItImageIndex, setPostItImageIndex] = useState<number | null>(null);
@@ -158,6 +159,11 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
   const transformerRef = useRef<Konva.Transformer>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Prevent hydration errors from localStorage-based settings
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -1272,9 +1278,6 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     // If Creative Assistant is enabled, route through CAA
     if (settings.caaEnabled) {
       try {
-        // Clear prompt input
-        setPrompt("");
-
         // Show loading toast
         toast.loading("✨ Creative Assistant working...", { id: "creative-assistant" });
 
@@ -1354,9 +1357,6 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
 
     // Original flow (CAA disabled)
 
-    // Clear prompt input
-    setPrompt("");
-
     // Check if we're editing (images selected) or generating
     const editableImages = selectedIndices
       .map((index) => images[index])
@@ -1377,7 +1377,14 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
 
     if (isEditing) {
       // IMAGE EDITING MODE
-      const imageInputs = editableImages.map((img) => img.s3Url!);
+      // Convert all images to JPEG format (nano-banana doesn't support transparent PNGs)
+      const imageInputs = editableImages.map((img) =>
+        transformImageUrl(img.s3Url!, { format: "jpeg" })
+      );
+      console.log("Editing with images:", editableImages.map(img => ({
+        sourceType: img.sourceType,
+        url: img.s3Url
+      })));
       await editImagesWithPrompt(promptText, imageInputs);
     } else {
       // IMAGE GENERATION MODE
@@ -1879,7 +1886,7 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
           width: "calc(100% - 40px)",
         }}
       >
-        {(settings.caaEnabled || readySelectedCount > 0) && (
+        {isMounted && (settings.caaEnabled || readySelectedCount > 0) && (
           <div className="mb-2 text-xs text-gray-500">
             {settings.caaEnabled && `Assistant active (${settings.caaApproach})`}
             {settings.caaEnabled && readySelectedCount > 0 && " • "}

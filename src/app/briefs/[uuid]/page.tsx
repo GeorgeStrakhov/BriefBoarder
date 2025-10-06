@@ -58,7 +58,13 @@ export default function BriefCanvas({
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [uploadingAsset, setUploadingAsset] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Prevent hydration errors from localStorage-based settings
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Enter Liveblocks room and load brief on mount
   useEffect(() => {
@@ -453,15 +459,17 @@ export default function BriefCanvas({
                     <label className="text-xs font-medium text-gray-700">
                       Enable Creative Assistant
                     </label>
-                    <Switch
-                      checked={settings.caaEnabled}
-                      onCheckedChange={(checked) =>
-                        handleSettingChange("caaEnabled", checked)
-                      }
-                    />
+                    {isMounted && (
+                      <Switch
+                        checked={settings.caaEnabled}
+                        onCheckedChange={(checked) =>
+                          handleSettingChange("caaEnabled", checked)
+                        }
+                      />
+                    )}
                   </div>
 
-                  {settings.caaEnabled && (
+                  {isMounted && settings.caaEnabled && (
                     <>
                       <div>
                         <label className="mb-2 block text-xs font-medium text-gray-500">
