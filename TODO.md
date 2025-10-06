@@ -1,4 +1,4 @@
-- real-time collab and sync with liveblocks and conflict resolution
+- colors of postits
 
 - add styles (defined as prompt and optional reference images): random, empty or specific
 

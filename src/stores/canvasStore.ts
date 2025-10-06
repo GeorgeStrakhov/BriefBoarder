@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { liveblocks } from "@liveblocks/zustand";
+import { liveblocksClient } from "@/lib/liveblocks";
 import Konva from "konva";
 
 export interface CanvasImage {
@@ -51,6 +53,28 @@ export const setImageRef = (index: number, ref: Konva.Image | null) => {
   imageRefsMap.set(index, ref);
 };
 export const getAllImageRefs = () => imageRefsMap;
+
+// Store HTMLImageElement objects outside of Zustand (not synced via Liveblocks)
+const imageElementsMap = new Map<string, HTMLImageElement>();
+
+const loadImageElement = (id: string, s3Url: string): Promise<HTMLImageElement> => {
+  // Return cached if available
+  if (imageElementsMap.has(id)) {
+    return Promise.resolve(imageElementsMap.get(id)!);
+  }
+
+  // Load and cache
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.src = s3Url;
+    img.onload = () => {
+      imageElementsMap.set(id, img);
+      resolve(img);
+    };
+    img.onerror = () => reject(new Error(`Failed to load: ${s3Url}`));
+  });
+};
 
 // History management outside of Zustand to avoid re-renders
 const MAX_HISTORY = 50;
@@ -158,19 +182,21 @@ export interface BriefSettings {
 }
 
 interface CanvasState {
-  // State
+  // State (some fields synced via Liveblocks)
   briefId: string | null;
-  images: CanvasImage[];
-  selectedIndices: number[];
+  images: CanvasImage[]; // Local only (contains HTMLImageElement)
+  syncedImages: SerializableImageState[]; // Synced via Liveblocks
+  selectedIndices: number[]; // Synced via Presence
   saveStatus: "saved" | "saving" | "unsaved";
   isLoading: boolean;
   isInitialLoad: boolean;
-  zoom: number;
-  stagePosition: { x: number; y: number };
-  settings: BriefSettings;
+  zoom: number; // Synced
+  stagePosition: { x: number; y: number }; // Synced
+  settings: BriefSettings; // Synced
 
   // Non-reactive metadata
   lastSavedState: string;
+
 
   // Actions
   setBriefId: (id: string) => void;
@@ -196,10 +222,13 @@ interface CanvasState {
   canRedo: () => boolean;
 }
 
-export const useCanvasStore = create<CanvasState>((set, get) => ({
+export const useCanvasStore = create<CanvasState>()(
+  liveblocks(
+    (set, get) => ({
   // Initial state
   briefId: null,
   images: [],
+  syncedImages: [],
   selectedIndices: [],
   saveStatus: "saved",
   isLoading: false,
@@ -269,8 +298,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         );
 
         const stateString = JSON.stringify(brief.canvasState);
+        const serializedImages = serializeImages(loadedImages);
+
         set({
           images: loadedImages,
+          syncedImages: serializedImages, // IMPORTANT: Set both together to prevent sync loop
           zoom: brief.canvasState.zoom ?? 1,
           stagePosition: brief.canvasState.stagePosition ?? { x: 0, y: 0 },
           settings: brief.settings
@@ -297,6 +329,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
         // Push initial state to history
         pushHistory(loadedImages);
+
+        // Update tracking refs to prevent initial sync loop
+        previousImages = loadedImages;
+        previousSyncedImages = serializedImages;
       } else {
         set({ isLoading: false, isInitialLoad: false });
       }
@@ -601,4 +637,73 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   canUndo: () => historyStep > 0,
 
   canRedo: () => historyStep < history.length - 1,
-}));
+    }),
+    {
+      client: liveblocksClient,
+      storageMapping: {
+        // Sync these fields across all users
+        syncedImages: true, // Serializable version (no HTMLImageElement)
+        settings: true,
+        // NOTE: zoom and stagePosition are NOT synced - each user controls their own viewport
+      },
+      presenceMapping: {
+        // Per-user ephemeral state
+        selectedIndices: true,
+      },
+    }
+  )
+);
+
+// Track previous state to detect changes
+let previousImages: CanvasImage[] = [];
+let previousSyncedImages: SerializableImageState[] = [];
+
+// Sync: When local images change, update syncedImages (serialize)
+useCanvasStore.subscribe((state) => {
+  const images = state.images;
+
+  // Check if images array reference changed
+  if (images === previousImages) return;
+  previousImages = images;
+
+  const synced = serializeImages(images);
+  const currentSynced = state.syncedImages;
+
+  // Only update if changed (prevent infinite loops)
+  if (JSON.stringify(synced) !== JSON.stringify(currentSynced)) {
+    useCanvasStore.setState({ syncedImages: synced });
+  }
+});
+
+// Sync: When remote syncedImages change, update local images (deserialize)
+useCanvasStore.subscribe((state) => {
+  const syncedImages = state.syncedImages;
+
+  // Check if syncedImages array reference changed
+  if (syncedImages === previousSyncedImages) return;
+  previousSyncedImages = syncedImages;
+
+  const currentImages = state.images;
+
+  // Check if we need to update (prevent infinite loops)
+  const currentSynced = serializeImages(currentImages);
+  if (JSON.stringify(currentSynced) === JSON.stringify(syncedImages)) {
+    return;
+  }
+
+  // Load HTMLImageElements for each synced image
+  Promise.all(
+    syncedImages.map(async (data) => {
+      const img = data.s3Url
+        ? await loadImageElement(data.id, data.s3Url)
+        : new window.Image();
+
+      return {
+        ...data,
+        image: img,
+      } as CanvasImage;
+    })
+  ).then((loadedImages) => {
+    useCanvasStore.setState({ images: loadedImages });
+  });
+});

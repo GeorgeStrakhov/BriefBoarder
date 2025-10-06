@@ -31,8 +31,16 @@ export default function BriefCanvas({
   const { uuid } = use(params);
   const router = useRouter();
 
-  const { loadBrief, isLoading, saveToDatabase, settings, updateSettings } =
-    useCanvasStore();
+  const {
+    loadBrief,
+    isLoading,
+    saveToDatabase,
+    settings,
+    updateSettings,
+  } = useCanvasStore();
+
+  // Get Liveblocks state
+  const liveblocks = useCanvasStore((state: any) => state.liveblocks);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -43,21 +51,53 @@ export default function BriefCanvas({
   const [briefNotFound, setBriefNotFound] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Load brief on mount
+  // Enter Liveblocks room and load brief on mount
   useEffect(() => {
+    // Small delay to ensure Liveblocks middleware is ready
+    const timer = setTimeout(() => {
+      const enterRoom = (useCanvasStore as any).getState().liveblocks?.enterRoom;
+      if (enterRoom) {
+        enterRoom(uuid);
+      }
+    }, 100);
+
+    // Load brief data
     loadBrief(uuid);
     fetchBrief();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uuid, loadBrief]);
 
-  // Autosave canvas every 5 seconds
+    // Leave room on cleanup
+    return () => {
+      clearTimeout(timer);
+      const leaveRoom = (useCanvasStore as any).getState().liveblocks?.leaveRoom;
+      if (leaveRoom) {
+        leaveRoom();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uuid]);
+
+  // Autosave canvas every 5 seconds (leader-only to prevent duplicate writes)
   useEffect(() => {
     const interval = setInterval(() => {
-      saveToDatabase();
+      // Leader election: lowest connectionId is the leader
+      // This ensures exactly one leader even with multiple users
+      const self = liveblocks?.room?.getSelf?.();
+      const others = liveblocks?.others || [];
+
+      if (!self) return;
+
+      const myConnectionId = self.connectionId;
+      const allConnectionIds = [myConnectionId, ...others.map((o: any) => o.connectionId)];
+      const leaderId = Math.min(...allConnectionIds);
+      const isLeader = myConnectionId === leaderId;
+
+      if (isLeader) {
+        saveToDatabase();
+      }
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [saveToDatabase]);
+  }, [saveToDatabase, liveblocks]);
 
   const fetchBrief = async () => {
     try {
@@ -386,7 +426,7 @@ export default function BriefCanvas({
                         "👍",
                         "👎",
                         "🔥",
-                        "✨",
+                        "🤣",
                         "❓",
                         "❌",
                         "🤔",

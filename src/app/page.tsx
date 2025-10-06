@@ -125,7 +125,9 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        <h2 className="mb-4 text-2xl font-semibold">Your Briefs</h2>
+        {briefs.length > 0 && (
+          <h2 className="mb-4 text-2xl font-semibold">Your Briefs</h2>
+        )}
         <div className="grid gap-4">
           {briefs.map((brief) => (
             <Card

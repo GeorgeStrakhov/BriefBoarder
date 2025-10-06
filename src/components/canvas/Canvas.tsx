@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import * as React from "react";
 import { Stage, Layer, Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import { PixelCrop } from "react-image-crop";
@@ -58,7 +59,7 @@ function TransformableImage({
   nodeRef,
   isUpscaling,
   isRemovingBackground,
-}: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+}: any) {// eslint-disable-line @typescript-eslint/no-explicit-any
   const imageRef = useRef<Konva.Image>(null);
 
   useEffect(() => {
@@ -111,6 +112,22 @@ export default function Canvas() {
     canUndo,
     canRedo,
   } = useCanvasStore();
+
+  // Get Liveblocks state for leader check
+  const liveblocks = useCanvasStore((state: any) => state.liveblocks);
+
+  // Check if this user is the leader (responsible for saving)
+  const isLeader = React.useMemo(() => {
+    const self = liveblocks?.room?.getSelf?.();
+    const others = liveblocks?.others || [];
+
+    if (!self) return true; // Default to leader if not connected yet
+
+    const myConnectionId = self.connectionId;
+    const allConnectionIds = [myConnectionId, ...others.map((o: any) => o.connectionId)];
+    const leaderId = Math.min(...allConnectionIds);
+    return myConnectionId === leaderId;
+  }, [liveblocks]);
 
   // Local UI state
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -1237,12 +1254,18 @@ export default function Canvas() {
             alignItems: "center",
             opacity: 0.5,
           }}
-          title={saveStatus === "saved" ? "Saved" : "Saving..."}
+          title={isLeader ? (saveStatus === "saved" ? "Saved" : "Saving...") : "Synced"}
         >
-          {(saveStatus === "saving" || saveStatus === "unsaved") && (
-            <Loader2 className="h-4 w-4 animate-spin" />
+          {isLeader ? (
+            <>
+              {(saveStatus === "saving" || saveStatus === "unsaved") && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              {saveStatus === "saved" && <Check className="h-4 w-4" />}
+            </>
+          ) : (
+            <Check className="h-4 w-4" />
           )}
-          {saveStatus === "saved" && <Check className="h-4 w-4" />}
         </div>
 
         {/* Toggle reactions visibility */}
@@ -1341,6 +1364,7 @@ export default function Canvas() {
           right: "20px",
           display: "flex",
           flexDirection: "column",
+          alignItems: "flex-end",
           gap: "8px",
           zIndex: 1000,
         }}
@@ -1417,12 +1441,13 @@ export default function Canvas() {
                     isSelected={selectedIndices.includes(originalIndex)}
                     onSelect={(e: any) => handleSelect(originalIndex, e)} // eslint-disable-line @typescript-eslint/no-explicit-any
                     onDragEnd={(e: any) => handleImageDragEnd(originalIndex, e)} // eslint-disable-line @typescript-eslint/no-explicit-any
-                    onTransformEnd={(e: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
-                      handleImageTransformEnd(originalIndex, e)
-                    }
+                    onTransformEnd={(
+                      e: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+                    ) => handleImageTransformEnd(originalIndex, e)}
                     onDoubleClick={() => handleEditPostIt(originalIndex)}
-                    nodeRef={(node: Konva.Group | null) =>
-                      setImageRef(originalIndex, node as any) // eslint-disable-line @typescript-eslint/no-explicit-any
+                    nodeRef={
+                      (node: Konva.Group | null) =>
+                        setImageRef(originalIndex, node as any) // eslint-disable-line @typescript-eslint/no-explicit-any
                     }
                   />
                 );
@@ -1443,9 +1468,9 @@ export default function Canvas() {
                   isSelected={selectedIndices.includes(originalIndex)}
                   onSelect={(e: any) => handleSelect(originalIndex, e)} // eslint-disable-line @typescript-eslint/no-explicit-any
                   onDragEnd={(e: any) => handleImageDragEnd(originalIndex, e)} // eslint-disable-line @typescript-eslint/no-explicit-any
-                  onTransformEnd={(e: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
-                    handleImageTransformEnd(originalIndex, e)
-                  }
+                  onTransformEnd={(
+                    e: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+                  ) => handleImageTransformEnd(originalIndex, e)}
                   nodeRef={(node: Konva.Image) =>
                     setImageRef(originalIndex, node)
                   }
