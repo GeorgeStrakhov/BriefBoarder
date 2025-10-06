@@ -666,6 +666,46 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     setShowTextDialog(true);
   };
 
+  // Calculate text width based on content
+  const calculateTextWidth = (
+    text: string,
+    fontFamily: string,
+    bold: boolean,
+    italic: boolean
+  ): number => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return 300; // Fallback
+
+    // Convert CSS var() to actual font family (same as TextElement)
+    const getActualFontFamily = (fontVar: string): string => {
+      if (fontVar.includes("geist-sans")) return "Geist";
+      if (fontVar.includes("inter")) return "Inter";
+      if (fontVar.includes("playfair")) return "Playfair Display";
+      if (fontVar.includes("bebas")) return "Bebas Neue";
+      if (fontVar.includes("caveat")) return "Caveat";
+      if (fontVar.includes("roboto-mono")) return "Roboto Mono";
+      if (fontVar.includes("orbitron")) return "Orbitron";
+      return "Geist"; // fallback
+    };
+
+    // Match the font used in TextElement (32px base size)
+    const actualFontFamily = getActualFontFamily(fontFamily);
+    const fontStyle = `${italic ? "italic " : ""}${bold ? "bold " : ""}32px ${actualFontFamily}`;
+    ctx.font = fontStyle;
+
+    // Measure each line and find the longest
+    const lines = text.split("\n");
+    let maxWidth = 0;
+    lines.forEach((line) => {
+      const metrics = ctx.measureText(line);
+      maxWidth = Math.max(maxWidth, metrics.width);
+    });
+
+    // Add padding (matching TextElement padding of 10px on each side)
+    return Math.max(maxWidth + 20, 100); // Minimum 100px
+  };
+
   const handleSaveText = async (config: {
     text: string;
     fontFamily: string;
@@ -714,10 +754,18 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
       img.crossOrigin = "anonymous";
       img.src = dataUrl;
       img.onload = () => {
+        // Calculate width based on text content
+        const textWidth = calculateTextWidth(
+          config.text,
+          config.fontFamily,
+          config.bold,
+          config.italic
+        );
+
         addImage({
           id: crypto.randomUUID(),
           image: img,
-          width: 300, // Default width for text wrapping
+          width: textWidth,
           height: 100, // Placeholder height (text will auto-size)
           x: posX,
           y: posY,
@@ -738,6 +786,13 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
       };
     } else {
       // Update existing text element
+      const textWidth = calculateTextWidth(
+        config.text,
+        config.fontFamily,
+        config.bold,
+        config.italic
+      );
+
       updateImage(textImageIndex, {
         text: config.text,
         fontFamily: config.fontFamily,
@@ -747,6 +802,7 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
         color: config.color,
         textAlign: config.align,
         shadow: config.shadow,
+        width: textWidth,
       });
     }
   };
@@ -1229,12 +1285,9 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
       const width = maxX - minX;
       const height = maxY - minY;
 
-      // Add padding
-      const padding = 20;
-      minX -= padding;
-      minY -= padding;
-      const exportWidth = width + padding * 2;
-      const exportHeight = height + padding * 2;
+      // No padding for merge (tight crop)
+      const exportWidth = width;
+      const exportHeight = height;
 
       // Save current stage transforms
       const originalScale = stage.scaleX();
@@ -1323,8 +1376,8 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
             image: mergedImg,
             width: exportWidth,
             height: exportHeight,
-            x: minX + padding + 50,
-            y: minY + padding + 50,
+            x: minX + 50,
+            y: minY + 50,
             rotation: 0,
             scaleX: 1,
             scaleY: 1,

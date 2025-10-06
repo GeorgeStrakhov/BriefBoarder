@@ -384,6 +384,12 @@ export const useCanvasStore = create<CanvasState>()(
                   text: imgData.text,
                   color: imgData.color,
                   isAIGenerated: imgData.isAIGenerated,
+                  fontFamily: imgData.fontFamily,
+                  lineHeight: imgData.lineHeight,
+                  bold: imgData.bold,
+                  italic: imgData.italic,
+                  textAlign: imgData.textAlign,
+                  shadow: imgData.shadow,
                   uploading: false,
                 });
               };
