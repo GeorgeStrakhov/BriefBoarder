@@ -191,3 +191,76 @@ export async function answerUnstructured({
     );
   }
 }
+
+// ===== IMAGE DESCRIPTION (Vision) =====
+
+interface DescribeImageOptions {
+  imageUrl: string;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+export async function describeImage({
+  imageUrl,
+  model = "anthropic/claude-3.5-haiku",
+  temperature = 0.7,
+  maxTokens = 500,
+}: DescribeImageOptions): Promise<string> {
+  try {
+    const systemPrompt = `You are an expert at describing images in detail. Create a comprehensive description that could be used as a text-to-image generation prompt.
+
+Focus on:
+- Overall composition and framing
+- Main subjects and their arrangement
+- Visual style and medium (photo, illustration, painting, etc.)
+- Lighting and atmosphere
+- Colors and color palette
+- Mood and emotional tone
+- Important details and textures
+- Artistic techniques or photography style
+
+Write in a natural, flowing style as if describing the image to someone who will recreate it. Start with the medium/style (e.g., "A photograph of...", "An illustration of...", "A digital painting of...").
+
+Keep it concise but detailed - aim for 2-3 sentences.`;
+
+    const completion = await openrouter.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "image_url",
+              image_url: {
+                url: imageUrl,
+              },
+            },
+            {
+              type: "text",
+              text: "Describe this image in detail as if you were creating a text-to-image generation prompt.",
+            },
+          ],
+        },
+      ],
+      temperature,
+      max_tokens: maxTokens,
+    });
+
+    const content = completion.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error("No response content from vision model");
+    }
+
+    return content.trim();
+  } catch (error) {
+    throw new Error(
+      `Failed to describe image: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
+  }
+}

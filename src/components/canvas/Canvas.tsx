@@ -313,8 +313,7 @@ export default function Canvas() {
           rotation: 0,
           scaleX: 1,
           scaleY: 1,
-          isReaction: true,
-          reactionType: "sticker",
+          sourceType: "sticker",
           s3Url: dataUrl, // Use data URL for stickers (no need to upload)
         });
       };
@@ -354,7 +353,7 @@ export default function Canvas() {
           rotation: 0,
           scaleX: 1,
           scaleY: 1,
-          assetType: "brand",
+          sourceType: "asset",
           s3Url: assetUrl, // Use placeholder URL for now
         });
       };
@@ -385,6 +384,7 @@ export default function Canvas() {
             width: scaledWidth,
             height: scaledHeight,
             uploading: true,
+            sourceType: "uploaded",
             x: 100,
             y: 100,
             rotation: 0,
@@ -411,6 +411,28 @@ export default function Canvas() {
                 s3Key: data.s3Key,
                 uploading: false,
               });
+
+              // Generate description in background
+              (async () => {
+                try {
+                  const describeResponse = await fetch("/api/describe-image", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ imageUrl: data.s3Url }),
+                  });
+
+                  if (describeResponse.ok) {
+                    const describeData = await describeResponse.json();
+                    // Update image with generated prompt
+                    updateImage(newImageIndex, {
+                      prompt: describeData.description,
+                    });
+                  }
+                } catch (error) {
+                  console.error("Failed to generate description:", error);
+                  // Don't show error to user, just log it
+                }
+              })();
             } else {
               console.error("Upload failed:", data.error);
               updateImage(newImageIndex, { uploading: false });
@@ -509,8 +531,7 @@ export default function Canvas() {
           rotation: 0,
           scaleX: 1,
           scaleY: 1,
-          isReaction: true,
-          reactionType: "postit",
+          sourceType: "postit",
           text: text,
           color: color,
           s3Url: dataUrl,
@@ -656,6 +677,21 @@ export default function Canvas() {
     }
   };
 
+  const handleCopyPrompt = async () => {
+    if (selectedIndices.length !== 1) return;
+
+    const imageData = images[selectedIndices[0]];
+    if (!imageData?.prompt) return;
+
+    try {
+      await navigator.clipboard.writeText(imageData.prompt);
+      toast.success("Prompt copied to clipboard");
+    } catch (error) {
+      console.error("Copy failed:", error);
+      toast.error("Failed to copy prompt");
+    }
+  };
+
   const handleUpscale = async () => {
     if (selectedIndices.length !== 1) return;
 
@@ -781,7 +817,7 @@ export default function Canvas() {
       // Always include assets, only exclude reactions if includeReactions is false
       const exportableImages = images
         .map((img, index) => ({ img, index }))
-        .filter(({ img }) => includeReactions || !img.isReaction);
+        .filter(({ img }) => includeReactions || (img.sourceType !== "sticker" && img.sourceType !== "postit"));
 
       if (exportableImages.length === 0) {
         toast.error("No images to download");
@@ -857,7 +893,7 @@ export default function Canvas() {
       const hiddenIndices: number[] = [];
       if (!includeReactions) {
         images.forEach((img, index) => {
-          if (img.isReaction) {
+          if (img.sourceType === "sticker" || img.sourceType === "postit") {
             hiddenIndices.push(index);
             const node = imageRefsMap.get(index);
             if (node) node.visible(false);
@@ -1019,6 +1055,9 @@ export default function Canvas() {
           width,
           height,
           isGenerating: true,
+          sourceType: "edited",
+          prompt: promptText,
+          sourceImages: imageInputs,
           x,
           y,
           rotation: 0,
@@ -1116,6 +1155,8 @@ export default function Canvas() {
           width,
           height,
           isGenerating: true,
+          sourceType: "generated",
+          prompt: promptText,
           x,
           y,
           rotation: 0,
@@ -1224,8 +1265,8 @@ export default function Canvas() {
     if (selectedIndices.length !== 1) return "multiple";
     const item = images[selectedIndices[0]];
     if (!item) return "none";
-    if (item.reactionType === "postit") return "postit";
-    if (item.isReaction) return "emoji";
+    if (item.sourceType === "postit") return "postit";
+    if (item.sourceType === "sticker") return "emoji";
     return "image";
   };
 
@@ -1430,11 +1471,11 @@ export default function Canvas() {
         <Layer>
           {images
             .map((imgData, originalIndex) => ({ imgData, originalIndex }))
-            .filter(({ imgData }) => showReactions || !imgData.isReaction)
+            .filter(({ imgData }) => showReactions || (imgData.sourceType !== "sticker" && imgData.sourceType !== "postit"))
             .sort((a, b) => a.imgData.zIndex - b.imgData.zIndex)
             .map(({ imgData, originalIndex }) => {
               // Render post-it note
-              if (imgData.reactionType === "postit") {
+              if (imgData.sourceType === "postit") {
                 return (
                   <PostItNote
                     key={originalIndex}
@@ -1576,6 +1617,12 @@ export default function Canvas() {
               {/* Regular image: All options */}
               {selectedItemType === "image" && (
                 <>
+                  {images[selectedIndices[0]]?.prompt && (
+                    <DropdownMenuItem onClick={handleCopyPrompt}>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Copy Prompt
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={handleOpenCrop}>
                     <Crop className="mr-2 h-4 w-4" />
                     Crop

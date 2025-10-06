@@ -3,6 +3,14 @@ import { liveblocks } from "@liveblocks/zustand";
 import { liveblocksClient } from "@/lib/liveblocks";
 import Konva from "konva";
 
+export type ImageSourceType =
+  | "generated" // AI generated from scratch
+  | "edited" // AI edited from reference images
+  | "uploaded" // User uploaded file
+  | "sticker" // Emoji sticker
+  | "postit" // Post-it note
+  | "asset"; // Preset asset (logo, brand, etc)
+
 export interface CanvasImage {
   id: string;
   image: HTMLImageElement;
@@ -10,15 +18,23 @@ export interface CanvasImage {
   height: number;
   s3Url?: string;
   s3Key?: string;
+
+  // Source tracking
+  sourceType: ImageSourceType;
+  prompt?: string; // For generated/edited types
+  sourceImages?: string[]; // For edited type - S3 URLs of reference images
+
+  // Temporary state flags
   uploading?: boolean;
   isGenerating?: boolean;
   isUpscaling?: boolean;
   isRemovingBackground?: boolean;
-  isReaction?: boolean;
-  reactionType?: "sticker" | "postit";
-  assetType?: "brand" | "logo";
-  text?: string;
-  color?: string; // Post-it note color
+
+  // Type-specific metadata
+  text?: string; // For post-it notes
+  color?: string; // For post-it notes
+
+  // Transform properties
   x: number;
   y: number;
   rotation: number;
@@ -40,11 +56,15 @@ export interface SerializableImageState {
   scaleX: number;
   scaleY: number;
   zIndex: number;
-  isReaction?: boolean;
-  reactionType?: "sticker" | "postit";
-  assetType?: "brand" | "logo";
+
+  // Source tracking
+  sourceType: ImageSourceType;
+  prompt?: string;
+  sourceImages?: string[];
+
+  // Type-specific metadata
   text?: string;
-  color?: string; // Post-it note color
+  color?: string;
 }
 
 // Store imageRefs outside of Zustand to avoid re-render loops
@@ -99,9 +119,9 @@ const serializeImages = (images: CanvasImage[]): SerializableImageState[] => {
       scaleX: img.scaleX,
       scaleY: img.scaleY,
       zIndex: img.zIndex,
-      isReaction: img.isReaction,
-      reactionType: img.reactionType,
-      assetType: img.assetType,
+      sourceType: img.sourceType,
+      prompt: img.prompt,
+      sourceImages: img.sourceImages,
       text: img.text,
       color: img.color,
     }));
@@ -131,9 +151,9 @@ const deserializeImages = async (
             scaleX: data.scaleX,
             scaleY: data.scaleY,
             zIndex: data.zIndex,
-            isReaction: data.isReaction,
-            reactionType: data.reactionType,
-            assetType: data.assetType,
+            sourceType: data.sourceType,
+            prompt: data.prompt,
+            sourceImages: data.sourceImages,
             text: data.text,
             color: data.color,
             uploading: false,
@@ -287,9 +307,9 @@ export const useCanvasStore = create<CanvasState>()(
                   scaleX: imgData.scaleX,
                   scaleY: imgData.scaleY,
                   zIndex: imgData.zIndex ?? index, // Use saved zIndex or fallback to array index
-                  isReaction: imgData.isReaction,
-                  reactionType: imgData.reactionType,
-                  assetType: imgData.assetType,
+                  sourceType: imgData.sourceType,
+                  prompt: imgData.prompt,
+                  sourceImages: imgData.sourceImages,
                   text: imgData.text,
                   color: imgData.color,
                   uploading: false,
@@ -351,12 +371,12 @@ export const useCanvasStore = create<CanvasState>()(
     set((state) => {
       // Reactions always go on top with zIndex starting at 10000
       // Regular images use zIndex 0-9999
-      const isReaction = image.isReaction || image.reactionType;
+      const isReaction = image.sourceType === "sticker" || image.sourceType === "postit";
 
       if (isReaction) {
         // Find max zIndex among reactions
         const maxReactionZIndex = state.images
-          .filter((img) => img.isReaction || img.reactionType)
+          .filter((img) => img.sourceType === "sticker" || img.sourceType === "postit")
           .reduce((max, img) => Math.max(max, img.zIndex), 9999);
         const imageWithZIndex = { ...image, zIndex: maxReactionZIndex + 1 };
 
@@ -366,7 +386,7 @@ export const useCanvasStore = create<CanvasState>()(
       } else {
         // Find max zIndex among non-reactions (must stay below 10000)
         const maxRegularZIndex = state.images
-          .filter((img) => !img.isReaction && !img.reactionType)
+          .filter((img) => img.sourceType !== "sticker" && img.sourceType !== "postit")
           .reduce((max, img) => Math.max(max, img.zIndex), -1);
         // Ensure we never assign zIndex >= 10000 to regular images
         const nextZIndex = Math.min(maxRegularZIndex + 1, 9999);
@@ -419,7 +439,7 @@ export const useCanvasStore = create<CanvasState>()(
       // Check if selected items are reactions or regular images
       const selectedItems = indices.map((i) => images[i]);
       const areReactions = selectedItems.some(
-        (img) => img?.isReaction || img?.reactionType,
+        (img) => img?.sourceType === "sticker" || img?.sourceType === "postit",
       );
 
       // Find max zIndex within the appropriate category
@@ -427,12 +447,12 @@ export const useCanvasStore = create<CanvasState>()(
       if (areReactions) {
         // Find max among reactions (zIndex >= 10000)
         maxZIndex = images
-          .filter((img) => img.isReaction || img.reactionType)
+          .filter((img) => img.sourceType === "sticker" || img.sourceType === "postit")
           .reduce((max, img) => Math.max(max, img.zIndex), 9999);
       } else {
         // Find max among regular images (zIndex < 10000)
         maxZIndex = images
-          .filter((img) => !img.isReaction && !img.reactionType)
+          .filter((img) => img.sourceType !== "sticker" && img.sourceType !== "postit")
           .reduce((max, img) => Math.max(max, img.zIndex), -1);
         // Cap at 9998 so adding indices doesn't cross into reaction territory
         maxZIndex = Math.min(maxZIndex, 9998 - indices.length);
@@ -519,10 +539,11 @@ export const useCanvasStore = create<CanvasState>()(
             scaleX: node?.scaleX() ?? imgData.scaleX,
             scaleY: node?.scaleY() ?? imgData.scaleY,
             zIndex: imgData.zIndex,
-            isReaction: imgData.isReaction,
-            reactionType: imgData.reactionType,
-            assetType: imgData.assetType,
+            sourceType: imgData.sourceType,
+            prompt: imgData.prompt,
+            sourceImages: imgData.sourceImages,
             text: imgData.text,
+            color: imgData.color,
           };
         })
         .filter((img) => img.s3Url), // Only save uploaded images
