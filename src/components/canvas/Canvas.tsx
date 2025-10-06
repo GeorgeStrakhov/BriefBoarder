@@ -7,37 +7,6 @@ import Konva from "konva";
 import { PixelCrop } from "react-image-crop";
 import { transformImageUrl } from "@/lib/utils/image-transform";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  MoreVertical,
-  Crop,
-  ZoomIn,
-  ZoomOut,
-  Download,
-  Trash2,
-  Undo2,
-  Redo2,
-  Sparkles,
-  ArrowUpCircle,
-  FileDown,
-  Loader2,
-  Check,
-  Eraser,
-  Link,
-  Eye,
-  EyeOff,
-  Pencil,
-  Layers,
-  ArrowUp,
-  ArrowDown,
-} from "lucide-react";
-import {
   useCanvasStore,
   setImageRef,
   getAllImageRefs,
@@ -49,6 +18,11 @@ import PostItNote from "./PostItNote";
 import PostItEditDialog from "./PostItEditDialog";
 import TextElement from "./TextElement";
 import TextEditDialog from "./TextEditDialog";
+import GenerateIsland from "./GenerateIsland";
+import SelectionContextMenu from "./SelectionContextMenu";
+import CanvasControls from "./CanvasControls";
+import UndoRedoControls from "./UndoRedoControls";
+import ZoomControls from "./ZoomControls";
 
 function TransformableImage({
   image,
@@ -1951,173 +1925,30 @@ export default function Canvas({
       }}
     >
       {/* Top right controls */}
-      <div
-        style={{
-          position: "absolute",
-          top: "20px",
-          right: "20px",
-          display: "flex",
-          gap: "12px",
-          alignItems: "center",
-          zIndex: 1000,
-        }}
-      >
-        {/* Save status indicator */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            opacity: 0.5,
-          }}
-          title={
-            isLeader
-              ? saveStatus === "saved"
-                ? "Saved"
-                : "Saving..."
-              : "Synced"
-          }
-        >
-          {isLeader ? (
-            <>
-              {(saveStatus === "saving" || saveStatus === "unsaved") && (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              )}
-              {saveStatus === "saved" && <Check className="h-4 w-4" />}
-            </>
-          ) : (
-            <Check className="h-4 w-4" />
-          )}
-        </div>
-
-        {/* Toggle reactions visibility */}
-        <button
-          onClick={() => setShowReactions(!showReactions)}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-            display: "flex",
-            alignItems: "center",
-            opacity: 0.5,
-          }}
-          title={
-            showReactions ? "Hide Notes & Reactions" : "Show Notes & Reactions"
-          }
-        >
-          {showReactions ? (
-            <Eye className="h-4 w-4" />
-          ) : (
-            <EyeOff className="h-4 w-4" />
-          )}
-        </button>
-
-        {/* Download board button */}
-        {images.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  opacity: 0.5,
-                }}
-                title="Download Board"
-              >
-                <FileDown className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleDownloadBoard(false)}>
-                Download Board
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleDownloadBoard(true)}>
-                Download with Notes & Reactions
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+      <CanvasControls
+        isLeader={isLeader}
+        saveStatus={saveStatus}
+        showReactions={showReactions}
+        onToggleReactions={() => setShowReactions(!showReactions)}
+        hasImages={images.length > 0}
+        onDownloadBoard={handleDownloadBoard}
+      />
 
       {/* Undo/Redo controls */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "20px",
-          left: "20px",
-          display: "flex",
-          flexDirection: "row",
-          gap: "8px",
-          zIndex: 1000,
-        }}
-      >
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={undo}
-          disabled={!canUndo()}
-          className="bg-white"
-          title="Undo (Cmd+Z)"
-        >
-          <Undo2 className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={redo}
-          disabled={!canRedo()}
-          className="bg-white"
-          title="Redo (Cmd+Shift+Z)"
-        >
-          <Redo2 className="h-4 w-4" />
-        </Button>
-      </div>
+      <UndoRedoControls
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={canUndo()}
+        canRedo={canRedo()}
+      />
 
       {/* Zoom controls */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "20px",
-          right: "20px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-end",
-          gap: "8px",
-          zIndex: 1000,
-        }}
-      >
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleZoomIn}
-          className="bg-white"
-          title="Zoom In"
-        >
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleZoomOut}
-          className="bg-white"
-          title="Zoom Out"
-        >
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleResetZoom}
-          className="bg-white text-xs"
-          title="Reset Zoom"
-        >
-          {Math.round(zoom * 100)}%
-        </Button>
-      </div>
+      <ZoomControls
+        zoom={zoom}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onResetZoom={handleResetZoom}
+      />
       <Stage
         ref={stageRef}
         width={dimensions.width}
@@ -2273,168 +2104,26 @@ export default function Canvas({
           Drag and drop an image here or use AI to generate one
         </div>
       )}
-      {selectedIndices.length >= 1 && selectionBounds && (
-        <div
-          style={{
-            position: "absolute",
-            left: `${selectionBounds.x * zoom + stagePosition.x + selectionBounds.width * zoom + 10}px`,
-            top: `${selectionBounds.y * zoom + stagePosition.y}px`,
-          }}
-        >
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                style={{
-                  background: "white",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px",
-                  padding: "8px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                }}
-              >
-                <MoreVertical size={16} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {/* Post-it note: Edit + Layer + Delete */}
-              {selectedItemType === "postit" && (
-                <>
-                  <DropdownMenuItem
-                    onClick={() => handleEditPostIt(selectedIndices[0])}
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleBringToFront}>
-                    <ArrowUp className="mr-2 h-4 w-4" />
-                    Bring to Front
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSendToBack}>
-                    <ArrowDown className="mr-2 h-4 w-4" />
-                    Send to Back
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleDelete}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-
-              {/* Emoji sticker: Layer + Delete */}
-              {selectedItemType === "emoji" && (
-                <>
-                  <DropdownMenuItem onClick={handleBringToFront}>
-                    <ArrowUp className="mr-2 h-4 w-4" />
-                    Bring to Front
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSendToBack}>
-                    <ArrowDown className="mr-2 h-4 w-4" />
-                    Send to Back
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleDelete}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-
-              {/* Text element: Edit + Layer + Delete */}
-              {selectedItemType === "text" && (
-                <>
-                  <DropdownMenuItem
-                    onClick={() => handleEditText(selectedIndices[0])}
-                  >
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleBringToFront}>
-                    <ArrowUp className="mr-2 h-4 w-4" />
-                    Bring to Front
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSendToBack}>
-                    <ArrowDown className="mr-2 h-4 w-4" />
-                    Send to Back
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleDelete}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-
-              {/* Regular image: All options */}
-              {selectedItemType === "image" && (
-                <>
-                  {images[selectedIndices[0]]?.prompt && (
-                    <DropdownMenuItem onClick={handleCopyPrompt}>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Copy Prompt
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={handleOpenCrop}>
-                    <Crop className="mr-2 h-4 w-4" />
-                    Crop
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleDownload}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Download
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleCopyUrl}>
-                    <Link className="mr-2 h-4 w-4" />
-                    Copy URL
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleUpscale}>
-                    <ArrowUpCircle className="mr-2 h-4 w-4" />
-                    Upscale
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleRemoveBackground}>
-                    <Eraser className="mr-2 h-4 w-4" />
-                    Remove Background
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleBringToFront}>
-                    <ArrowUp className="mr-2 h-4 w-4" />
-                    Bring to Front
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSendToBack}>
-                    <ArrowDown className="mr-2 h-4 w-4" />
-                    Send to Back
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleDelete}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-
-              {/* Multiple items selected: Merge + Layer + Delete */}
-              {selectedItemType === "multiple" && (
-                <>
-                  <DropdownMenuItem onClick={handleMergeSelection}>
-                    <Layers className="mr-2 h-4 w-4" />
-                    Merge Selection
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleBringToFront}>
-                    <ArrowUp className="mr-2 h-4 w-4" />
-                    Bring to Front
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSendToBack}>
-                    <ArrowDown className="mr-2 h-4 w-4" />
-                    Send to Back
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleDelete}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete ({selectedIndices.length})
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
+      <SelectionContextMenu
+        selectionBounds={selectionBounds}
+        zoom={zoom}
+        stagePosition={stagePosition}
+        selectedItemType={selectedItemType}
+        selectedIndices={selectedIndices}
+        hasPrompt={!!images[selectedIndices[0]]?.prompt}
+        onEditPostIt={() => handleEditPostIt(selectedIndices[0])}
+        onEditText={() => handleEditText(selectedIndices[0])}
+        onCopyPrompt={handleCopyPrompt}
+        onOpenCrop={handleOpenCrop}
+        onDownload={handleDownload}
+        onCopyUrl={handleCopyUrl}
+        onUpscale={handleUpscale}
+        onRemoveBackground={handleRemoveBackground}
+        onBringToFront={handleBringToFront}
+        onSendToBack={handleSendToBack}
+        onMergeSelection={handleMergeSelection}
+        onDelete={handleDelete}
+      />
 
       {/* Delete Confirmation Dialog */}
       <DeleteImageDialog
@@ -2515,58 +2204,16 @@ export default function Canvas({
       />
 
       {/* Generate Island */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "20px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          background: "white",
-          borderRadius: "12px",
-          padding: "16px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          zIndex: 1000,
-          maxWidth: "600px",
-          width: "calc(100% - 40px)",
-        }}
-      >
-        {isMounted && (settings.caaEnabled || readySelectedCount > 0) && (
-          <div className="mb-2 text-xs text-gray-500">
-            {settings.caaEnabled &&
-              `Assistant active (${settings.caaApproach})`}
-            {settings.caaEnabled && readySelectedCount > 0 && " • "}
-            {readySelectedCount > 0 && (
-              <>
-                {readySelectedCount} image{readySelectedCount !== 1 ? "s" : ""}{" "}
-                selected • Using {settings.imageEditingModel}
-              </>
-            )}
-          </div>
-        )}
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <Textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Describe the image you want to generate..."
-            className="h-[68px] resize-none"
-            style={{ flex: 1 }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                handleGenerateImage();
-              }
-            }}
-          />
-          <Button
-            onClick={handleGenerateImage}
-            disabled={!prompt.trim()}
-            size="icon"
-            className="h-[80px] w-[80px] flex-shrink-0"
-          >
-            <Sparkles className="h-5 w-5" />
-          </Button>
-        </div>
-      </div>
+      <GenerateIsland
+        prompt={prompt}
+        onPromptChange={setPrompt}
+        onGenerate={handleGenerateImage}
+        isMounted={isMounted}
+        caaEnabled={settings.caaEnabled}
+        caaApproach={settings.caaApproach}
+        imageEditingModel={settings.imageEditingModel}
+        readySelectedCount={readySelectedCount}
+      />
     </div>
   );
 }
