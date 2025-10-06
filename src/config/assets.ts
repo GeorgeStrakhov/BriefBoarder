@@ -1,33 +1,31 @@
 /**
  * Asset Configuration
- * Defines predefined brand assets available to users and CAA
+ * Defines preset assets available to all briefs
  */
 
 export interface Asset {
   name: string; // Internal identifier (e.g., "logo")
   label: string; // Display name (e.g., "Company Logo")
   url: string; // CDN URL
-  type: "brand" | "pattern" | "texture" | "custom";
+  type: "preset" | "custom";
 }
 
-// Predefined assets available to all users
-export const PREDEFINED_ASSETS: Asset[] = [
+// Get CDN base URL
+const getCDNBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    // Client-side
+    return process.env.NEXT_PUBLIC_S3_ENDPOINT || "";
+  }
+  // Server-side
+  return process.env.S3_PUBLIC_ENDPOINT || process.env.NEXT_PUBLIC_S3_ENDPOINT || "";
+};
+
+// Preset assets automatically available to all briefs
+export const PRESET_ASSETS: Asset[] = [
   {
     name: "logo",
-    label: "Company Logo",
-    url: "https://placeholder.com/logo.png", // TODO: Replace with actual asset URL
-    type: "brand",
-  },
-  {
-    name: "logo-white",
-    label: "Logo (White)",
-    url: "https://placeholder.com/logo-white.png", // TODO: Replace with actual asset URL
-    type: "brand",
-  },
-  {
-    name: "pattern",
-    label: "Brand Pattern",
-    url: "https://placeholder.com/pattern.png", // TODO: Replace with actual asset URL
-    type: "pattern",
+    label: "Logo",
+    url: `${getCDNBaseUrl()}/logo.png`,
+    type: "preset",
   },
 ];

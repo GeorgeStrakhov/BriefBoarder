@@ -6,7 +6,8 @@ const openrouter = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-function zodSchemaToJsonSchema(schema: typeof caaResponseSchema): unknown {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function zodSchemaToJsonSchema(_schema: typeof caaResponseSchema): unknown {
   // Simple conversion for our specific schema
   return {
     type: "object",

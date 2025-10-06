@@ -55,6 +55,40 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 - Unstructured output: Uses OpenRouter (defaults to Claude Sonnet 4.5)
 - Converts Zod schemas to JSON schema for model constraints
 
+**Creative Assistant Agent (CAA) (`src/lib/services/caa/`)**:
+
+The Creative Assistant enhances user prompts with creative interpretation and intelligent decision-making. It determines whether to generate, edit, or provide informational responses based on context.
+
+**Architecture**:
+- **LLM Client** (`llm-client.ts`): Direct OpenRouter API calls with structured output
+  - Uses `response_format: { type: "json_object" }` for guaranteed JSON responses
+  - Zod schema validation with retry logic (3 attempts, exponential backoff)
+  - Multimodal support: passes selected images via `image_url` objects using `transformedUrl` (1024px versions)
+- **Types & Schemas** (`types.ts`): Defines `CAAContext`, `CAAResult`, and Zod response schema
+- **Approaches** (`approaches/`): Different creative styles
+  - **Simple**: Clean, accurate enhancement with minimal interpretation
+  - **Dramatic**: Bold B&W photography with cinematic lighting and randomized techniques
+
+**Actions**:
+- `generate` - Create new images from scratch
+- `edit` - Modify existing selected images
+- `answer` - Provide informational responses without image generation
+- `generate_and_note` - Generate image + create reference post-it note
+
+**Key Patterns**:
+- **Nano-Banana Editing**: When editing images, prompts describe CHANGES/ADDITIONS only, not the full scene
+  - Example: "add bold red text saying 'SALE' in the top right corner" ✓
+  - Example: "a scenic mountain landscape with red text" ✗ (describes full image)
+- **Text/Copy Handling**: Text content goes in `noteText` (creates post-it), visual style in `enhancedPrompt`
+  - Post-it serves as reference, image shows visual result
+- **Asset Integration**: Can reference and include custom assets in edits via `includeAssets` field
+
+**Settings**:
+- Stored in localStorage (per-user, not synced via Liveblocks)
+- Toggle on/off, select approach (simple/dramatic), choose LLM model
+- Default model: GPT-4.1 Mini (also supports Claude Sonnet 4)
+- Settings persist across sessions but remain personal to each user
+
 **Image Generation (`src/lib/services/replicate/replicate.ts`)**:
 
 - Model registry pattern abstracts different Replicate models
@@ -87,9 +121,11 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 - `/api/generate` - POST: Generate new images from text prompts
 - `/api/edit` - POST: Edit existing images with AI (multi-image support)
 - `/api/upscale` - POST: Upscale images using AI models
+- `/api/caa` - POST: Creative Assistant Agent endpoint, enhances prompts and determines actions
 - `/api/briefs` - GET/POST: List and create briefs
 - `/api/briefs/[uuid]` - GET/PATCH: Load and update brief canvas state
 - `/api/upload` - POST: Upload images from client to S3
+- `/api/liveblocks-auth` - POST: Liveblocks authentication, provides room access tokens
 
 ### Canvas Components
 
@@ -100,6 +136,8 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 - Keyboard shortcuts (Delete, Cmd+Z/Cmd+Shift+Z for undo/redo)
 - Click-away to deselect, shift-click for multi-select
 - Auto-save debounced to 2 seconds
+- Prompt island with Creative Assistant indicator (shows active style when enabled)
+- Selection indicator (shows selected image count and editing model)
 
 **CropDialog.tsx**: Image cropping using `react-image-crop` library
 
@@ -127,13 +165,16 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 - Image positions, rotations, scales
 - Post-it notes (text and colors)
 - Stickers and reactions
-- AI model settings
-- User selections (see what others are selecting)
+- Brief name and description
+- Custom assets (when implemented)
+- User selections (see what others are selecting via Presence)
 
 **What stays local**:
 - Zoom level and pan position (independent viewports)
 - Undo/redo history (can only undo your own changes)
 - HTMLImageElement objects (reconstructed from S3 URLs)
+- AI model settings (stored in localStorage, per-user preferences)
+- Creative Assistant preferences (enabled/disabled, approach, model)
 
 ### Path Aliases
 

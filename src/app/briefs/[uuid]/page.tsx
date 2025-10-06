@@ -1,10 +1,10 @@
 "use client";
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,6 +12,8 @@ import {
   X,
   Check,
   Home,
+  Upload,
+  Trash2,
 } from "lucide-react";
 import { useCanvasStore } from "@/stores/canvasStore";
 import Canvas from "@/components/canvas/Canvas";
@@ -42,20 +44,27 @@ export default function BriefCanvas({
     briefDescription,
     setBriefName,
     setBriefDescription,
+    getAllAssets,
+    addCustomAsset,
+    removeCustomAsset,
   } = useCanvasStore();
 
   // Get Liveblocks state
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const liveblocks = useCanvasStore((state: any) => state.liveblocks);
   const [editingName, setEditingName] = useState("");
   const [editingDescription, setEditingDescription] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [uploadingAsset, setUploadingAsset] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Enter Liveblocks room and load brief on mount
   useEffect(() => {
     // Small delay to ensure Liveblocks middleware is ready
     const timer = setTimeout(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const enterRoom = (useCanvasStore as any).getState().liveblocks?.enterRoom;
       if (enterRoom) {
         enterRoom(uuid);
@@ -68,6 +77,7 @@ export default function BriefCanvas({
     // Leave room on cleanup
     return () => {
       clearTimeout(timer);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const leaveRoom = (useCanvasStore as any).getState().liveblocks?.leaveRoom;
       if (leaveRoom) {
         leaveRoom();
@@ -87,6 +97,7 @@ export default function BriefCanvas({
       if (!self) return;
 
       const myConnectionId = self.connectionId;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const allConnectionIds = [myConnectionId, ...others.map((o: any) => o.connectionId)];
       const leaderId = Math.min(...allConnectionIds);
       const isLeader = myConnectionId === leaderId;
@@ -131,6 +142,71 @@ export default function BriefCanvas({
 
   const handleSettingChange = async (key: string, value: string | boolean) => {
     await updateSettings({ [key]: value });
+  };
+
+  const handleAssetUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size must be less than 10MB");
+      return;
+    }
+
+    setUploadingAsset(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Generate a unique name from filename
+        const name = file.name
+          .toLowerCase()
+          .replace(/\s+/g, "-")
+          .replace(/[^a-z0-9-]/g, "");
+
+        addCustomAsset({
+          name,
+          label: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
+          url: data.s3Url,
+          type: "custom",
+        });
+
+        toast.success("Asset uploaded");
+
+        // Reset input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      } else {
+        toast.error(data.error || "Upload failed");
+      }
+    } catch (error) {
+      console.error("Asset upload error:", error);
+      toast.error("Failed to upload asset");
+    } finally {
+      setUploadingAsset(false);
+    }
+  };
+
+  const handleDeleteAsset = (name: string) => {
+    removeCustomAsset(name);
+    toast.success("Asset removed");
   };
 
   if (isLoading) {
@@ -483,42 +559,57 @@ export default function BriefCanvas({
                 <summary className="mb-3 cursor-pointer text-sm font-medium text-gray-700">
                   Assets
                 </summary>
+                <div className="mb-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAssetUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingAsset}
+                    className="w-full"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {uploadingAsset ? "Uploading..." : "Upload Asset"}
+                  </Button>
+                </div>
                 <div className="grid grid-cols-2 gap-2">
-                  {[
-                    {
-                      url: "https://placehold.co/150x150/FF6B6B/FFFFFF?text=Logo",
-                      label: "Logo",
-                    },
-                    {
-                      url: "https://placehold.co/150x150/4ECDC4/FFFFFF?text=Brand",
-                      label: "Brand",
-                    },
-                    {
-                      url: "https://placehold.co/150x150/45B7D1/FFFFFF?text=Icon",
-                      label: "Icon",
-                    },
-                    {
-                      url: "https://placehold.co/150x150/96CEB4/FFFFFF?text=Badge",
-                      label: "Badge",
-                    },
-                  ].map((asset) => (
+                  {getAllAssets().map((asset) => (
                     <div
                       key={asset.url}
-                      draggable="true"
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData("asset", asset.url);
-                      }}
-                      className="cursor-move transition-opacity hover:opacity-80"
+                      className="group relative"
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={asset.url}
-                        alt={asset.label}
-                        className="h-20 w-full rounded border border-gray-200 object-cover"
-                      />
-                      <p className="mt-1 text-center text-xs text-gray-500">
-                        {asset.label}
-                      </p>
+                      <div
+                        draggable="true"
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData("asset", asset.url);
+                        }}
+                        className="cursor-move transition-opacity hover:opacity-80"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={asset.url}
+                          alt={asset.label}
+                          className="h-20 w-full rounded border border-gray-200 object-cover"
+                        />
+                        <p className="mt-1 text-center text-xs text-gray-500">
+                          {asset.label}
+                        </p>
+                      </div>
+                      {asset.type === "custom" && (
+                        <button
+                          onClick={() => handleDeleteAsset(asset.name)}
+                          className="absolute top-1 right-1 rounded bg-red-500 p-1 text-white opacity-0 transition-opacity hover:bg-red-600 group-hover:opacity-100"
+                          title="Delete asset"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>

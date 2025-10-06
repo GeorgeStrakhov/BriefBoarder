@@ -122,6 +122,7 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
   } = useCanvasStore();
 
   // Get Liveblocks state for leader check
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const liveblocks = useCanvasStore((state: any) => state.liveblocks);
 
   // Get user preferences
@@ -135,6 +136,7 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     if (!self) return true; // Default to leader if not connected yet
 
     const myConnectionId = self.connectionId;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allConnectionIds = [myConnectionId, ...others.map((o: any) => o.connectionId)];
     const leaderId = Math.min(...allConnectionIds);
     return myConnectionId === leaderId;
