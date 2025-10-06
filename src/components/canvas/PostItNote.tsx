@@ -8,6 +8,7 @@ interface PostItNoteProps {
   width: number;
   height: number;
   text: string;
+  color?: string;
   rotation: number;
   scaleX: number;
   scaleY: number;
@@ -28,6 +29,7 @@ export default function PostItNote({
   width,
   height,
   text,
+  color = "#FEFF9C",
   rotation,
   scaleX,
   scaleY,
@@ -62,11 +64,11 @@ export default function PostItNote({
       onDblClick={onDoubleClick}
       onDblTap={onDoubleClick}
     >
-      {/* Yellow sticky note background */}
+      {/* Sticky note background */}
       <Rect
         width={width}
         height={height}
-        fill="#FEFF9C"
+        fill={color}
         stroke={isSelected ? "#0066ff" : "#E5E5A0"}
         strokeWidth={isSelected ? 2 : 1}
         shadowColor="black"

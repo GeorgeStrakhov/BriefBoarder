@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import * as React from "react";
+import { usePreferences } from "@/hooks/usePreferences";
 import { Stage, Layer, Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import { PixelCrop } from "react-image-crop";
@@ -115,6 +116,9 @@ export default function Canvas() {
 
   // Get Liveblocks state for leader check
   const liveblocks = useCanvasStore((state: any) => state.liveblocks);
+
+  // Get user preferences
+  const { preferences, updatePreference } = usePreferences();
 
   // Check if this user is the leader (responsible for saving)
   const isLeader = React.useMemo(() => {
@@ -459,7 +463,10 @@ export default function Canvas() {
     setShowPostItDialog(true);
   };
 
-  const handleSavePostIt = async (text: string) => {
+  const handleSavePostIt = async (text: string, color: string) => {
+    // Save the color preference for next time
+    updatePreference("lastPostItColor", color);
+
     if (postItImageIndex === null) {
       // Create new post-it
       if (!stageRef.current) return;
@@ -483,8 +490,8 @@ export default function Canvas() {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      // Draw yellow background
-      ctx.fillStyle = "#FEFF9C";
+      // Draw background with selected color
+      ctx.fillStyle = color;
       ctx.fillRect(0, 0, size, size);
 
       const dataUrl = canvas.toDataURL();
@@ -505,12 +512,13 @@ export default function Canvas() {
           isReaction: true,
           reactionType: "postit",
           text: text,
+          color: color,
           s3Url: dataUrl,
         });
       };
     } else {
       // Update existing post-it
-      updateImage(postItImageIndex, { text });
+      updateImage(postItImageIndex, { text, color });
     }
   };
 
@@ -1435,6 +1443,7 @@ export default function Canvas() {
                     width={imgData.width}
                     height={imgData.height}
                     text={imgData.text || ""}
+                    color={imgData.color}
                     rotation={imgData.rotation}
                     scaleX={imgData.scaleX}
                     scaleY={imgData.scaleY}
@@ -1630,6 +1639,11 @@ export default function Canvas() {
         onOpenChange={setShowPostItDialog}
         initialText={
           postItImageIndex !== null ? images[postItImageIndex]?.text : ""
+        }
+        initialColor={
+          postItImageIndex !== null
+            ? images[postItImageIndex]?.color || "#FEFF9C"
+            : preferences.lastPostItColor || "#FEFF9C"
         }
         onSave={handleSavePostIt}
       />

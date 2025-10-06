@@ -18,6 +18,7 @@ export interface CanvasImage {
   reactionType?: "sticker" | "postit";
   assetType?: "brand" | "logo";
   text?: string;
+  color?: string; // Post-it note color
   x: number;
   y: number;
   rotation: number;
@@ -43,6 +44,7 @@ export interface SerializableImageState {
   reactionType?: "sticker" | "postit";
   assetType?: "brand" | "logo";
   text?: string;
+  color?: string; // Post-it note color
 }
 
 // Store imageRefs outside of Zustand to avoid re-render loops
@@ -101,6 +103,7 @@ const serializeImages = (images: CanvasImage[]): SerializableImageState[] => {
       reactionType: img.reactionType,
       assetType: img.assetType,
       text: img.text,
+      color: img.color,
     }));
 };
 
@@ -132,6 +135,7 @@ const deserializeImages = async (
             reactionType: data.reactionType,
             assetType: data.assetType,
             text: data.text,
+            color: data.color,
             uploading: false,
           });
         };
@@ -287,6 +291,7 @@ export const useCanvasStore = create<CanvasState>()(
                   reactionType: imgData.reactionType,
                   assetType: imgData.assetType,
                   text: imgData.text,
+                  color: imgData.color,
                   uploading: false,
                 });
               };

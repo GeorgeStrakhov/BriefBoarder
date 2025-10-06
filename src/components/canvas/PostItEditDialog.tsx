@@ -13,29 +13,46 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
 
+const POSTIT_COLORS = [
+  { name: "Yellow", value: "#FEFF9C" },
+  { name: "Pink", value: "#FFB3D9" },
+  { name: "Blue", value: "#A7D8FF" },
+  { name: "Green", value: "#BFFFB3" },
+  { name: "Orange", value: "#FFD699" },
+  { name: "Purple", value: "#E0BBE4" },
+  { name: "Mint", value: "#B0F2B4" },
+  { name: "Peach", value: "#FFCCB3" },
+  { name: "Lavender", value: "#D4C5F9" },
+  { name: "Coral", value: "#FFB3B3" },
+];
+
 interface PostItEditDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialText?: string;
-  onSave: (text: string) => void;
+  initialColor?: string;
+  onSave: (text: string, color: string) => void;
 }
 
 export default function PostItEditDialog({
   open,
   onOpenChange,
   initialText = "",
+  initialColor = "#FEFF9C",
   onSave,
 }: PostItEditDialogProps) {
   const [text, setText] = useState(initialText);
+  const [selectedColor, setSelectedColor] = useState(initialColor);
 
   useEffect(() => {
     if (open) {
       setText(initialText);
+      setSelectedColor(initialColor);
     }
-  }, [open, initialText]);
+  }, [open, initialText, initialColor]);
 
   const handleSave = () => {
-    onSave(text);
+    onSave(text, selectedColor);
     onOpenChange(false);
   };
 
@@ -63,6 +80,32 @@ export default function PostItEditDialog({
             className="resize-none"
             autoFocus
           />
+
+          {/* Color picker */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Color
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {POSTIT_COLORS.map((color) => (
+                <button
+                  key={color.value}
+                  type="button"
+                  onClick={() => setSelectedColor(color.value)}
+                  tabIndex={-1}
+                  className="group relative h-8 w-8 rounded-full transition-transform hover:scale-110"
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
+                >
+                  {selectedColor === color.value && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="h-3 w-3 rounded-full bg-black opacity-50" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <DialogFooter>
             <Button onClick={handleSave}>Save</Button>

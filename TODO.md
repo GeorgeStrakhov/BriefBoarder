@@ -1,4 +1,4 @@
-- colors of postits
+- add prompt to imageModel
 
 - add styles (defined as prompt and optional reference images): random, empty or specific
 

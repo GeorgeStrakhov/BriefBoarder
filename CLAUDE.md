@@ -29,13 +29,14 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 
 ### Core State Management
 
-**Canvas Store (`src/stores/canvasStore.ts`)**: Central Zustand store managing all canvas state including:
+**Canvas Store (`src/stores/canvasStore.ts`)**: Central Zustand store with Liveblocks middleware for realtime collaboration:
 
 - Image objects with transform properties (position, rotation, scale, zIndex)
-- Selection state for multi-select operations
-- Undo/redo history (max 50 steps) using serializable snapshots
+- Selection state for multi-select operations (synced via Liveblocks Presence)
+- Undo/redo history (max 50 steps, local only - not synced)
 - Auto-save with debouncing to prevent excessive database writes
 - Settings for AI models and aspect ratios
+- Realtime sync via Liveblocks for collaborative editing
 
 **Key architectural decisions**:
 
@@ -43,6 +44,8 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 - History system uses serializable snapshots (excludes HTMLImageElement objects)
 - Images must have S3 URLs before being included in history/saves
 - Two-tier zIndex system: regular images use 0-9999, reactions/post-its use 10000+ (ensures reactions always appear above images while maintaining bring-to-front within each category)
+- **Realtime collaboration**: Liveblocks middleware wraps store, syncs `syncedImages` (serializable) while keeping `images` (with HTMLImageElement) local
+- **Leader-based persistence**: Only the first user in a room saves to PostgreSQL (leader election via lowest connectionId)
 
 ### AI Services Layer
 
@@ -100,6 +103,38 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 
 **CropDialog.tsx**: Image cropping using `react-image-crop` library
 
+### User Preferences
+
+**Preferences Hook (`src/hooks/usePreferences.ts`)**: Reusable localStorage-backed preferences system:
+
+- Stores user preferences like `lastPostItColor`
+- Automatically persists to localStorage
+- Provides `updatePreference()` for setting values
+- Extensible for future user-specific settings (theme, layout preferences, etc.)
+
+### Realtime Collaboration
+
+**Liveblocks Integration**: Multi-user realtime collaboration powered by Liveblocks Zustand middleware:
+
+- **Synced state**: Images (transforms, positions, colors), settings, selections (presence)
+- **Local state**: Zoom/pan (per-user viewport), undo/redo history, HTMLImageElement objects
+- **Image sync pattern**: `images` (local with HTMLImageElement) ↔ `syncedImages` (serialized, synced)
+- **Auto-healing**: When remote images arrive, HTMLImageElements are automatically loaded from S3 URLs
+- **Leader election**: Lowest connectionId = leader, responsible for database persistence
+- **Auth**: `/api/liveblocks-auth` endpoint provides room access tokens
+
+**What syncs in realtime**:
+- Image positions, rotations, scales
+- Post-it notes (text and colors)
+- Stickers and reactions
+- AI model settings
+- User selections (see what others are selecting)
+
+**What stays local**:
+- Zoom level and pan position (independent viewports)
+- Undo/redo history (can only undo your own changes)
+- HTMLImageElement objects (reconstructed from S3 URLs)
+
 ### Path Aliases
 
 - `@/*` maps to `src/*` (configured in tsconfig.json)
@@ -112,6 +147,8 @@ This is an AI-powered visual moodboard application built with Next.js 15, React 
 - `OPENROUTER_API_KEY` - For unstructured LLM calls
 - `S3_ENDPOINT_URL`, `S3_BUCKET_NAME`, `S3_ACCESS_ID_KEY`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` - R2/S3 configuration
 - `S3_PUBLIC_ENDPOINT` - CDN endpoint for serving images
+- `NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY` - Liveblocks public key (client-side)
+- `LIVEBLOCKS_SECRET_KEY` - Liveblocks secret key (server-side auth)
 
 ## Key Patterns
 
