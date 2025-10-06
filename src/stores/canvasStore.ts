@@ -10,6 +10,7 @@ export type ImageSourceType =
   | "uploaded" // User uploaded file
   | "sticker" // Emoji sticker
   | "postit" // Post-it note
+  | "text" // Text element
   | "asset"; // Preset asset (logo, brand, etc)
 
 export interface CanvasImage {
@@ -32,9 +33,17 @@ export interface CanvasImage {
   isRemovingBackground?: boolean;
 
   // Type-specific metadata
-  text?: string; // For post-it notes
-  color?: string; // For post-it notes
+  text?: string; // For post-it notes and text elements
+  color?: string; // For post-it notes and text elements
   isAIGenerated?: boolean; // For AI-generated post-it notes
+
+  // Text-specific properties
+  fontFamily?: string; // For text elements
+  lineHeight?: number; // For text elements
+  bold?: boolean; // For text elements
+  italic?: boolean; // For text elements
+  textAlign?: "left" | "center" | "right"; // For text elements
+  shadow?: boolean; // For text elements
 
   // Transform properties
   x: number;
@@ -68,13 +77,22 @@ export interface SerializableImageState {
   text?: string;
   color?: string;
   isAIGenerated?: boolean;
+
+  // Text-specific properties
+  fontFamily?: string;
+  lineHeight?: number;
+  bold?: boolean;
+  italic?: boolean;
+  textAlign?: "left" | "center" | "right";
+  shadow?: boolean;
 }
 
 // Store imageRefs outside of Zustand to avoid re-render loops
-const imageRefsMap = new Map<number, Konva.Image | null>();
+// Can store Konva.Image, Konva.Text, or Konva.Group (for post-its)
+const imageRefsMap = new Map<number, Konva.Image | Konva.Text | Konva.Group | null>();
 
 export const getImageRef = (index: number) => imageRefsMap.get(index) || null;
-export const setImageRef = (index: number, ref: Konva.Image | null) => {
+export const setImageRef = (index: number, ref: Konva.Image | Konva.Text | Konva.Group | null) => {
   imageRefsMap.set(index, ref);
 };
 export const getAllImageRefs = () => imageRefsMap;
@@ -129,6 +147,12 @@ const serializeImages = (images: CanvasImage[]): SerializableImageState[] => {
       text: img.text,
       color: img.color,
       isAIGenerated: img.isAIGenerated,
+      fontFamily: img.fontFamily,
+      lineHeight: img.lineHeight,
+      bold: img.bold,
+      italic: img.italic,
+      textAlign: img.textAlign,
+      shadow: img.shadow,
     }));
 };
 
@@ -162,6 +186,12 @@ const deserializeImages = async (
             text: data.text,
             color: data.color,
             isAIGenerated: data.isAIGenerated,
+            fontFamily: data.fontFamily,
+            lineHeight: data.lineHeight,
+            bold: data.bold,
+            italic: data.italic,
+            textAlign: data.textAlign,
+            shadow: data.shadow,
             uploading: false,
           });
         };
@@ -403,14 +433,14 @@ export const useCanvasStore = create<CanvasState>()(
 
   addImage: (image) => {
     set((state) => {
-      // Reactions always go on top with zIndex starting at 10000
+      // Reactions and text always go on top with zIndex starting at 10000
       // Regular images use zIndex 0-9999
-      const isReaction = image.sourceType === "sticker" || image.sourceType === "postit";
+      const isReaction = image.sourceType === "sticker" || image.sourceType === "postit" || image.sourceType === "text";
 
       if (isReaction) {
-        // Find max zIndex among reactions
+        // Find max zIndex among reactions and text
         const maxReactionZIndex = state.images
-          .filter((img) => img.sourceType === "sticker" || img.sourceType === "postit")
+          .filter((img) => img.sourceType === "sticker" || img.sourceType === "postit" || img.sourceType === "text")
           .reduce((max, img) => Math.max(max, img.zIndex), 9999);
         const imageWithZIndex = { ...image, zIndex: maxReactionZIndex + 1 };
 
@@ -418,9 +448,9 @@ export const useCanvasStore = create<CanvasState>()(
           images: [...state.images, imageWithZIndex],
         };
       } else {
-        // Find max zIndex among non-reactions (must stay below 10000)
+        // Find max zIndex among non-reactions/non-text (must stay below 10000)
         const maxRegularZIndex = state.images
-          .filter((img) => img.sourceType !== "sticker" && img.sourceType !== "postit")
+          .filter((img) => img.sourceType !== "sticker" && img.sourceType !== "postit" && img.sourceType !== "text")
           .reduce((max, img) => Math.max(max, img.zIndex), -1);
         // Ensure we never assign zIndex >= 10000 to regular images
         const nextZIndex = Math.min(maxRegularZIndex + 1, 9999);
@@ -466,50 +496,7 @@ export const useCanvasStore = create<CanvasState>()(
   },
 
   setSelectedIndices: (indices) => {
-    const { images } = get();
-
-    // If selecting new images, bring them to front within their category
-    if (indices.length > 0) {
-      // Check if selected items are reactions or regular images
-      const selectedItems = indices.map((i) => images[i]);
-      const areReactions = selectedItems.some(
-        (img) => img?.sourceType === "sticker" || img?.sourceType === "postit",
-      );
-
-      // Find max zIndex within the appropriate category
-      let maxZIndex: number;
-      if (areReactions) {
-        // Find max among reactions (zIndex >= 10000)
-        maxZIndex = images
-          .filter((img) => img.sourceType === "sticker" || img.sourceType === "postit")
-          .reduce((max, img) => Math.max(max, img.zIndex), 9999);
-      } else {
-        // Find max among regular images (zIndex < 10000)
-        maxZIndex = images
-          .filter((img) => img.sourceType !== "sticker" && img.sourceType !== "postit")
-          .reduce((max, img) => Math.max(max, img.zIndex), -1);
-        // Cap at 9998 so adding indices doesn't cross into reaction territory
-        maxZIndex = Math.min(maxZIndex, 9998 - indices.length);
-      }
-
-      // Update zIndex for newly selected images
-      const updatedImages = images.map((img, i) => {
-        if (indices.includes(i)) {
-          const newZIndex = maxZIndex + 1 + indices.indexOf(i);
-          // Double-check we don't cross into reaction territory
-          return { ...img, zIndex: Math.min(newZIndex, 9999) };
-        }
-        return img;
-      });
-
-      set({ selectedIndices: indices, images: updatedImages });
-      get().markUnsaved();
-
-      // Push history when z-order changes
-      pushHistory(updatedImages);
-    } else {
-      set({ selectedIndices: indices });
-    }
+    set({ selectedIndices: indices });
   },
 
   updateImageTransform: (index, node) => {

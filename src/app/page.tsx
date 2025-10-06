@@ -95,7 +95,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="mx-auto max-w-4xl">
-        <h1 className="mb-8 text-4xl font-bold">Brief Boards</h1>
+        <h1 className="mb-8 text-4xl font-bold text-center">BRIEF BOARDS</h1>
 
         <Card className="mb-8">
           <CardHeader>

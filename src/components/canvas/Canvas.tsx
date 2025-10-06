@@ -33,6 +33,9 @@ import {
   Eye,
   EyeOff,
   Pencil,
+  Layers,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import {
   useCanvasStore,
@@ -44,6 +47,8 @@ import CropDialog from "./CropDialog";
 import DeleteImageDialog from "./DeleteImageDialog";
 import PostItNote from "./PostItNote";
 import PostItEditDialog from "./PostItEditDialog";
+import TextElement from "./TextElement";
+import TextEditDialog from "./TextEditDialog";
 
 function TransformableImage({
   image,
@@ -147,11 +152,17 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
   const [showCropDialog, setShowCropDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showPostItDialog, setShowPostItDialog] = useState(false);
+  const [showTextDialog, setShowTextDialog] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [cropImageIndex, setCropImageIndex] = useState<number | null>(null);
   const [postItImageIndex, setPostItImageIndex] = useState<number | null>(null);
   const [postItDropPosition, setPostItDropPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [textImageIndex, setTextImageIndex] = useState<number | null>(null);
+  const [textDropPosition, setTextDropPosition] = useState<{
     x: number;
     y: number;
   } | null>(null);
@@ -267,6 +278,26 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     const assetUrl = e.dataTransfer.getData("asset");
 
     if (stickerEmoji) {
+      // Special handling for pencil emoji - open text dialog
+      if (stickerEmoji === "✏️") {
+        if (!stageRef.current || !containerRef.current) return;
+
+        // Get drop position relative to container
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const x = e.clientX - containerRect.left;
+        const y = e.clientY - containerRect.top;
+
+        // Transform to stage coordinates (accounting for zoom and pan)
+        const stage = stageRef.current;
+        const stageX = (x - stage.x()) / zoom;
+        const stageY = (y - stage.y()) / zoom;
+
+        // Store drop position for text creation
+        setTextDropPosition({ x: stageX, y: stageY });
+        handleCreateText();
+        return;
+      }
+
       // Special handling for memo emoji - open post-it dialog
       if (stickerEmoji === "📝") {
         if (!stageRef.current || !containerRef.current) return;
@@ -485,6 +516,69 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     }
   };
 
+  const handleBringToFront = () => {
+    if (selectedIndices.length === 0) return;
+
+    // Check if selected items are reactions/text or regular images
+    const selectedItems = selectedIndices.map((i) => images[i]);
+    const areReactions = selectedItems.some(
+      (img) => img?.sourceType === "sticker" || img?.sourceType === "postit" || img?.sourceType === "text"
+    );
+
+    // Find max zIndex within the appropriate category
+    let maxZIndex: number;
+    if (areReactions) {
+      // Find max among reactions/text (zIndex >= 10000)
+      maxZIndex = images
+        .filter((img) => img.sourceType === "sticker" || img.sourceType === "postit" || img.sourceType === "text")
+        .reduce((max, img) => Math.max(max, img.zIndex), 9999);
+    } else {
+      // Find max among regular images (zIndex < 10000)
+      maxZIndex = images
+        .filter((img) => img.sourceType !== "sticker" && img.sourceType !== "postit" && img.sourceType !== "text")
+        .reduce((max, img) => Math.max(max, img.zIndex), -1);
+      // Cap at 9998 to leave room
+      maxZIndex = Math.min(maxZIndex, 9998 - selectedIndices.length);
+    }
+
+    // Update zIndex for each selected item
+    selectedIndices.forEach((index, i) => {
+      updateImage(index, { zIndex: maxZIndex + i + 1 });
+    });
+  };
+
+  const handleSendToBack = () => {
+    if (selectedIndices.length === 0) return;
+
+    // Check if selected items are reactions/text or regular images
+    const selectedItems = selectedIndices.map((i) => images[i]);
+    const areReactions = selectedItems.some(
+      (img) => img?.sourceType === "sticker" || img?.sourceType === "postit" || img?.sourceType === "text"
+    );
+
+    // Find min zIndex within the appropriate category
+    let minZIndex: number;
+    if (areReactions) {
+      // Find min among reactions/text (zIndex >= 10000)
+      minZIndex = images
+        .filter((img) => img.sourceType === "sticker" || img.sourceType === "postit" || img.sourceType === "text")
+        .reduce((min, img) => Math.min(min, img.zIndex), 20000);
+    } else {
+      // Find min among regular images (zIndex < 10000)
+      minZIndex = images
+        .filter((img) => img.sourceType !== "sticker" && img.sourceType !== "postit" && img.sourceType !== "text")
+        .reduce((min, img) => Math.min(min, img.zIndex), 10000);
+    }
+
+    // Calculate starting zIndex (min - number of items)
+    const startZIndex = Math.max(areReactions ? 10000 : 0, minZIndex - selectedIndices.length);
+
+    // Update zIndex for each selected item
+    selectedIndices.forEach((index, i) => {
+      updateImage(index, { zIndex: startZIndex + i });
+    });
+  };
+
   const handleDelete = () => {
     setShowDeleteDialog(true);
   };
@@ -559,6 +653,101 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     } else {
       // Update existing post-it
       updateImage(postItImageIndex, { text, color });
+    }
+  };
+
+  const handleCreateText = () => {
+    setTextImageIndex(null); // null means creating new
+    setShowTextDialog(true);
+  };
+
+  const handleEditText = (index: number) => {
+    setTextImageIndex(index);
+    setShowTextDialog(true);
+  };
+
+  const handleSaveText = async (config: {
+    text: string;
+    fontFamily: string;
+    lineHeight: number;
+    bold: boolean;
+    italic: boolean;
+    color: string;
+    align: "left" | "center" | "right";
+    shadow: boolean;
+  }) => {
+    // Save preferences for next time
+    updatePreference("lastTextFont", config.fontFamily);
+    updatePreference("lastTextLineHeight", config.lineHeight);
+    updatePreference("lastTextBold", config.bold);
+    updatePreference("lastTextItalic", config.italic);
+    updatePreference("lastTextColor", config.color);
+    updatePreference("lastTextAlign", config.align);
+    updatePreference("lastTextShadow", config.shadow);
+
+    if (textImageIndex === null) {
+      // Create new text element
+      if (!stageRef.current) return;
+
+      // Use drop position if available, otherwise use center
+      let posX, posY;
+      if (textDropPosition) {
+        posX = textDropPosition.x;
+        posY = textDropPosition.y;
+        setTextDropPosition(null); // Clear after use
+      } else {
+        posX = dimensions.width / 2 / zoom - stagePosition.x / zoom;
+        posY = dimensions.height / 2 / zoom - stagePosition.y / zoom;
+      }
+
+      // Create a placeholder image (1x1 transparent pixel)
+      // Text elements don't need an actual image, but the store requires it
+      const canvas = document.createElement("canvas");
+      canvas.width = 1;
+      canvas.height = 1;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, 1, 1);
+
+      const dataUrl = canvas.toDataURL();
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+      img.src = dataUrl;
+      img.onload = () => {
+        addImage({
+          id: crypto.randomUUID(),
+          image: img,
+          width: 300, // Default width for text wrapping
+          height: 100, // Placeholder height (text will auto-size)
+          x: posX,
+          y: posY,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          sourceType: "text",
+          text: config.text,
+          fontFamily: config.fontFamily,
+          lineHeight: config.lineHeight,
+          bold: config.bold,
+          italic: config.italic,
+          color: config.color,
+          textAlign: config.align,
+          shadow: config.shadow,
+          s3Url: dataUrl, // Use data URL (no need to upload)
+        });
+      };
+    } else {
+      // Update existing text element
+      updateImage(textImageIndex, {
+        text: config.text,
+        fontFamily: config.fontFamily,
+        lineHeight: config.lineHeight,
+        bold: config.bold,
+        italic: config.italic,
+        color: config.color,
+        textAlign: config.align,
+        shadow: config.shadow,
+      });
     }
   };
 
@@ -966,6 +1155,191 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     } catch (error) {
       console.error("Download board error:", error);
       toast.error("Failed to download board");
+    }
+  };
+
+  const handleMergeSelection = async () => {
+    if (!stageRef.current || selectedIndices.length < 2) {
+      toast.error("Please select at least 2 items to merge");
+      return;
+    }
+
+    try {
+      const stage = stageRef.current;
+      const layer = stage.getLayers()[0];
+      const imageRefsMap = getAllImageRefs();
+
+      // Get selected images
+      const selectedImages = selectedIndices
+        .map((index) => ({ img: images[index], index }))
+        .filter(({ img }) => img !== undefined);
+
+      if (selectedImages.length === 0) {
+        toast.error("No valid items selected");
+        return;
+      }
+
+      // Calculate bounding box of selected items (accounting for rotation)
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+
+      selectedImages.forEach(({ img }) => {
+        const imgX = img.x || 0;
+        const imgY = img.y || 0;
+        const imgWidth = img.width * (img.scaleX || 1);
+        const imgHeight = img.height * (img.scaleY || 1);
+        const rotation = img.rotation || 0;
+
+        // For rotated images, calculate the bounding box
+        if (rotation !== 0) {
+          const centerX = imgX + imgWidth / 2;
+          const centerY = imgY + imgHeight / 2;
+          const rad = (rotation * Math.PI) / 180;
+          const cos = Math.cos(rad);
+          const sin = Math.sin(rad);
+
+          const corners = [
+            { x: imgX, y: imgY },
+            { x: imgX + imgWidth, y: imgY },
+            { x: imgX + imgWidth, y: imgY + imgHeight },
+            { x: imgX, y: imgY + imgHeight },
+          ];
+
+          corners.forEach((corner) => {
+            const dx = corner.x - centerX;
+            const dy = corner.y - centerY;
+            const rotatedX = centerX + (dx * cos - dy * sin);
+            const rotatedY = centerY + (dx * sin + dy * cos);
+
+            minX = Math.min(minX, rotatedX);
+            minY = Math.min(minY, rotatedY);
+            maxX = Math.max(maxX, rotatedX);
+            maxY = Math.max(maxY, rotatedY);
+          });
+        } else {
+          minX = Math.min(minX, imgX);
+          minY = Math.min(minY, imgY);
+          maxX = Math.max(maxX, imgX + imgWidth);
+          maxY = Math.max(maxY, imgY + imgHeight);
+        }
+      });
+
+      const width = maxX - minX;
+      const height = maxY - minY;
+
+      // Add padding
+      const padding = 20;
+      minX -= padding;
+      minY -= padding;
+      const exportWidth = width + padding * 2;
+      const exportHeight = height + padding * 2;
+
+      // Save current stage transforms
+      const originalScale = stage.scaleX();
+      const originalPosition = { x: stage.x(), y: stage.y() };
+
+      // Temporarily hide non-selected items
+      const hiddenIndices: number[] = [];
+      images.forEach((img, index) => {
+        if (!selectedIndices.includes(index)) {
+          hiddenIndices.push(index);
+          const node = imageRefsMap.get(index);
+          if (node) node.visible(false);
+        }
+      });
+
+      // Hide transformer
+      if (transformerRef.current) {
+        transformerRef.current.visible(false);
+      }
+
+      // Temporarily clear selection to remove blue outlines
+      const savedSelection = [...selectedIndices];
+      setSelectedIndices([]);
+
+      // Reset stage transforms for export
+      stage.scale({ x: 1, y: 1 });
+      stage.position({ x: 0, y: 0 });
+      layer.batchDraw();
+
+      // Wait a frame for redraw
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
+      // Export from the layer with high quality (3x for crisp results)
+      const dataURL = layer.toDataURL({
+        x: minX,
+        y: minY,
+        width: exportWidth,
+        height: exportHeight,
+        pixelRatio: 3,
+      });
+
+      // Restore stage transforms
+      stage.scale({ x: originalScale, y: originalScale });
+      stage.position(originalPosition);
+
+      // Restore visibility
+      hiddenIndices.forEach((index) => {
+        const node = imageRefsMap.get(index);
+        if (node) node.visible(true);
+      });
+
+      // Restore transformer
+      if (transformerRef.current) {
+        transformerRef.current.visible(true);
+      }
+
+      // Restore selection
+      setSelectedIndices(savedSelection);
+
+      layer.batchDraw();
+
+      // Convert dataURL to blob
+      const response = await fetch(dataURL);
+      const blob = await response.blob();
+
+      // Upload to S3
+      const formData = new FormData();
+      formData.append("file", blob, "merged.png");
+
+      const uploadResponse = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const uploadData = await uploadResponse.json();
+
+      if (uploadResponse.ok) {
+        // Load the merged image
+        const mergedImg = new window.Image();
+        mergedImg.crossOrigin = "anonymous";
+        mergedImg.src = uploadData.s3Url;
+        mergedImg.onload = () => {
+          // Place new image near the selection (offset by 50px)
+          addImage({
+            id: crypto.randomUUID(),
+            image: mergedImg,
+            width: exportWidth,
+            height: exportHeight,
+            x: minX + padding + 50,
+            y: minY + padding + 50,
+            rotation: 0,
+            scaleX: 1,
+            scaleY: 1,
+            sourceType: "uploaded",
+            s3Url: uploadData.s3Url,
+            s3Key: uploadData.s3Key,
+          });
+          toast.success("Selection merged successfully!");
+        };
+      } else {
+        toast.error(uploadData.error || "Failed to upload merged image");
+      }
+    } catch (error) {
+      console.error("Merge selection error:", error);
+      toast.error("Failed to merge selection");
     }
   };
 
@@ -1442,6 +1816,7 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
     if (!item) return "none";
     if (item.sourceType === "postit") return "postit";
     if (item.sourceType === "sticker") return "emoji";
+    if (item.sourceType === "text") return "text";
     return "image";
   };
 
@@ -1678,6 +2053,40 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
                 );
               }
 
+              // Render text element
+              if (imgData.sourceType === "text") {
+                return (
+                  <TextElement
+                    key={originalIndex}
+                    x={imgData.x}
+                    y={imgData.y}
+                    width={imgData.width}
+                    text={imgData.text || ""}
+                    fontFamily={imgData.fontFamily || "var(--font-geist-sans)"}
+                    lineHeight={imgData.lineHeight || 1.2}
+                    bold={imgData.bold || false}
+                    italic={imgData.italic || false}
+                    color={imgData.color || "#000000"}
+                    align={imgData.textAlign || "left"}
+                    shadow={imgData.shadow || false}
+                    rotation={imgData.rotation}
+                    scaleX={imgData.scaleX}
+                    scaleY={imgData.scaleY}
+                    isSelected={selectedIndices.includes(originalIndex)}
+                    onSelect={(e: any) => handleSelect(originalIndex, e)} // eslint-disable-line @typescript-eslint/no-explicit-any
+                    onDragEnd={(e: any) => handleImageDragEnd(originalIndex, e)} // eslint-disable-line @typescript-eslint/no-explicit-any
+                    onTransformEnd={(
+                      e: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+                    ) => handleImageTransformEnd(originalIndex, e)}
+                    onDoubleClick={() => handleEditText(originalIndex)}
+                    nodeRef={
+                      (node: Konva.Text | null) =>
+                        setImageRef(originalIndex, node)
+                    }
+                  />
+                );
+              }
+
               // Render regular image
               return (
                 <TransformableImage
@@ -1765,7 +2174,7 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              {/* Post-it note: Edit + Delete */}
+              {/* Post-it note: Edit + Layer + Delete */}
               {selectedItemType === "postit" && (
                 <>
                   <DropdownMenuItem
@@ -1774,6 +2183,14 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
                     <Pencil className="mr-2 h-4 w-4" />
                     Edit
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleBringToFront}>
+                    <ArrowUp className="mr-2 h-4 w-4" />
+                    Bring to Front
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSendToBack}>
+                    <ArrowDown className="mr-2 h-4 w-4" />
+                    Send to Back
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleDelete}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete
@@ -1781,12 +2198,46 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
                 </>
               )}
 
-              {/* Emoji sticker: Delete only */}
+              {/* Emoji sticker: Layer + Delete */}
               {selectedItemType === "emoji" && (
-                <DropdownMenuItem onClick={handleDelete}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem onClick={handleBringToFront}>
+                    <ArrowUp className="mr-2 h-4 w-4" />
+                    Bring to Front
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSendToBack}>
+                    <ArrowDown className="mr-2 h-4 w-4" />
+                    Send to Back
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDelete}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              {/* Text element: Edit + Layer + Delete */}
+              {selectedItemType === "text" && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => handleEditText(selectedIndices[0])}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleBringToFront}>
+                    <ArrowUp className="mr-2 h-4 w-4" />
+                    Bring to Front
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSendToBack}>
+                    <ArrowDown className="mr-2 h-4 w-4" />
+                    Send to Back
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDelete}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
               )}
 
               {/* Regular image: All options */}
@@ -1818,6 +2269,14 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
                     <Eraser className="mr-2 h-4 w-4" />
                     Remove Background
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleBringToFront}>
+                    <ArrowUp className="mr-2 h-4 w-4" />
+                    Bring to Front
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSendToBack}>
+                    <ArrowDown className="mr-2 h-4 w-4" />
+                    Send to Back
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleDelete}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete
@@ -1825,12 +2284,26 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
                 </>
               )}
 
-              {/* Multiple items selected: Delete only */}
+              {/* Multiple items selected: Merge + Layer + Delete */}
               {selectedItemType === "multiple" && (
-                <DropdownMenuItem onClick={handleDelete}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete ({selectedIndices.length})
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem onClick={handleMergeSelection}>
+                    <Layers className="mr-2 h-4 w-4" />
+                    Merge Selection
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleBringToFront}>
+                    <ArrowUp className="mr-2 h-4 w-4" />
+                    Bring to Front
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSendToBack}>
+                    <ArrowDown className="mr-2 h-4 w-4" />
+                    Send to Back
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleDelete}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete ({selectedIndices.length})
+                  </DropdownMenuItem>
+                </>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1868,6 +2341,51 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
             : preferences.lastPostItColor || "#FEFF9C"
         }
         onSave={handleSavePostIt}
+      />
+
+      {/* Text Edit Dialog */}
+      <TextEditDialog
+        open={showTextDialog}
+        onOpenChange={setShowTextDialog}
+        initialText={
+          textImageIndex !== null ? images[textImageIndex]?.text : ""
+        }
+        initialFontFamily={
+          textImageIndex !== null
+            ? images[textImageIndex]?.fontFamily || "var(--font-geist-sans)"
+            : preferences.lastTextFont || "var(--font-geist-sans)"
+        }
+        initialLineHeight={
+          textImageIndex !== null
+            ? images[textImageIndex]?.lineHeight || 1.2
+            : preferences.lastTextLineHeight || 1.2
+        }
+        initialBold={
+          textImageIndex !== null
+            ? images[textImageIndex]?.bold || false
+            : preferences.lastTextBold || false
+        }
+        initialItalic={
+          textImageIndex !== null
+            ? images[textImageIndex]?.italic || false
+            : preferences.lastTextItalic || false
+        }
+        initialColor={
+          textImageIndex !== null
+            ? images[textImageIndex]?.color || "#000000"
+            : preferences.lastTextColor || "#000000"
+        }
+        initialAlign={
+          textImageIndex !== null
+            ? images[textImageIndex]?.textAlign || "left"
+            : preferences.lastTextAlign || "left"
+        }
+        initialShadow={
+          textImageIndex !== null
+            ? images[textImageIndex]?.shadow || false
+            : preferences.lastTextShadow || false
+        }
+        onSave={handleSaveText}
       />
 
       {/* Generate Island */}

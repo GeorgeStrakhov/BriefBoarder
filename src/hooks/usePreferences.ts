@@ -2,6 +2,13 @@ import { useState, useEffect } from "react";
 
 interface Preferences {
   lastPostItColor?: string;
+  lastTextFont?: string;
+  lastTextLineHeight?: number;
+  lastTextBold?: boolean;
+  lastTextItalic?: boolean;
+  lastTextColor?: string;
+  lastTextAlign?: "left" | "center" | "right";
+  lastTextShadow?: boolean;
   // Add more preferences here as needed
 }
 
@@ -9,6 +16,13 @@ const PREFERENCES_KEY = "briefboarder-preferences";
 
 const defaultPreferences: Preferences = {
   lastPostItColor: "#FEFF9C", // Classic yellow
+  lastTextFont: "var(--font-geist-sans)",
+  lastTextLineHeight: 1.2,
+  lastTextBold: false,
+  lastTextItalic: false,
+  lastTextColor: "#000000",
+  lastTextAlign: "left",
+  lastTextShadow: false,
 };
 
 export function usePreferences() {

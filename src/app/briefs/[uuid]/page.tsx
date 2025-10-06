@@ -541,7 +541,7 @@ export default function BriefCanvas({
                         "❓",
                         "❌",
                         "🤔",
-                        "⭐",
+                        "✏️",
                         "📝",
                       ].map((emoji) => (
                         <div

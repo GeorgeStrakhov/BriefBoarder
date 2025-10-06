@@ -147,7 +147,7 @@ Return ONLY the JSON object, no markdown formatting, no backticks, no additional
     approachPrompt: string,
     context: CAAContext
   ): string {
-    return `You are a Creative Approach Agent helping users create visual moodboards.
+    return `You are a Creative Approach Agent helping users create visual moodboards and brief boards.
 
 CONTEXT:
 - Brief: ${context.briefName} - ${context.briefDescription}
