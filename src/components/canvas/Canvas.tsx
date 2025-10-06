@@ -1242,7 +1242,7 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
 
       // Temporarily hide non-selected items
       const hiddenIndices: number[] = [];
-      images.forEach((img, index) => {
+      images.forEach((_, index) => {
         if (!selectedIndices.includes(index)) {
           hiddenIndices.push(index);
           const node = imageRefsMap.get(index);
