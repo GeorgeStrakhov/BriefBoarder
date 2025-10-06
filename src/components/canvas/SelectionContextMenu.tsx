@@ -19,7 +19,13 @@ import {
   ArrowDown,
 } from "lucide-react";
 
-type SelectionItemType = "postit" | "emoji" | "text" | "image" | "multiple";
+type SelectionItemType =
+  | "postit"
+  | "emoji"
+  | "text"
+  | "image"
+  | "multiple"
+  | "none";
 
 interface SelectionBounds {
   x: number;

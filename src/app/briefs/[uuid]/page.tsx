@@ -531,7 +531,7 @@ export default function BriefCanvas({
             <div className="mt-4 border-t border-gray-200 pt-4">
               <details open>
                 <summary className="mb-3 cursor-pointer text-sm font-medium text-gray-700">
-                  Reactions & Notes
+                  Reactions, Text & Notes
                 </summary>
                 <div className="space-y-3">
                   <div>
