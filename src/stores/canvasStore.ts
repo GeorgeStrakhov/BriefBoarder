@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { liveblocks } from "@liveblocks/zustand";
 import { liveblocksClient } from "@/lib/liveblocks";
 import Konva from "konva";
-import { Asset, PRESET_ASSETS } from "@/config/assets";
+import { Asset, getPresetAssets } from "@/config/assets";
 
 export type ImageSourceType =
   | "generated" // AI generated from scratch
@@ -690,7 +690,7 @@ export const useCanvasStore = create<CanvasState>()(
 
   getAllAssets: () => {
     const { customAssets } = get();
-    return [...PRESET_ASSETS, ...customAssets];
+    return [...getPresetAssets(), ...customAssets];
   },
 
   // History actions

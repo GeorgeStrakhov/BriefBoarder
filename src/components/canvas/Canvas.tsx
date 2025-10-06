@@ -363,8 +363,12 @@ export default function Canvas({ briefName = "", briefDescription = "" }: Canvas
           scaleX: 1,
           scaleY: 1,
           sourceType: "asset",
-          s3Url: assetUrl, // Use placeholder URL for now
+          s3Url: assetUrl,
         });
+      };
+      img.onerror = (e) => {
+        console.error("Failed to load asset:", assetUrl, e);
+        toast.error("Failed to load asset - check CORS configuration");
       };
       return;
     }

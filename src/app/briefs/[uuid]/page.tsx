@@ -582,25 +582,22 @@ export default function BriefCanvas({
                   {getAllAssets().map((asset) => (
                     <div
                       key={asset.url}
-                      className="group relative"
+                      draggable="true"
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("asset", asset.url);
+                      }}
+                      className="group relative cursor-move transition-opacity hover:opacity-80"
                     >
-                      <div
-                        draggable="true"
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData("asset", asset.url);
-                        }}
-                        className="cursor-move transition-opacity hover:opacity-80"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={asset.url}
-                          alt={asset.label}
-                          className="h-20 w-full rounded border border-gray-200 object-cover"
-                        />
-                        <p className="mt-1 text-center text-xs text-gray-500">
-                          {asset.label}
-                        </p>
-                      </div>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={asset.url}
+                        alt={asset.label}
+                        className="h-20 w-full rounded border border-gray-200 object-cover"
+                        crossOrigin="anonymous"
+                      />
+                      <p className="mt-1 text-center text-xs text-gray-500">
+                        {asset.label}
+                      </p>
                       {asset.type === "custom" && (
                         <button
                           onClick={() => handleDeleteAsset(asset.name)}
