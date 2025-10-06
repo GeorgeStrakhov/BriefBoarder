@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 export default function BriefCanvas({
   params,
@@ -37,18 +38,18 @@ export default function BriefCanvas({
     saveToDatabase,
     settings,
     updateSettings,
+    briefName,
+    briefDescription,
+    setBriefName,
+    setBriefDescription,
   } = useCanvasStore();
 
   // Get Liveblocks state
   const liveblocks = useCanvasStore((state: any) => state.liveblocks);
-
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [editingName, setEditingName] = useState("");
   const [editingDescription, setEditingDescription] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [briefNotFound, setBriefNotFound] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Enter Liveblocks room and load brief on mount
@@ -63,7 +64,6 @@ export default function BriefCanvas({
 
     // Load brief data
     loadBrief(uuid);
-    fetchBrief();
 
     // Leave room on cleanup
     return () => {
@@ -99,45 +99,14 @@ export default function BriefCanvas({
     return () => clearInterval(interval);
   }, [saveToDatabase, liveblocks]);
 
-  const fetchBrief = async () => {
-    try {
-      const response = await fetch(`/api/briefs/${uuid}`);
-      if (response.ok) {
-        const data = await response.json();
-        setName(data.name);
-        setDescription(data.description || "");
-      } else if (response.status === 404) {
-        setBriefNotFound(true);
-      }
-    } catch (error) {
-      console.error("Failed to fetch brief:", error);
-    }
-  };
-
-  if (briefNotFound) {
-    notFound();
-  }
-
   const handleEditName = () => {
-    setEditingName(name);
+    setEditingName(briefName);
     setIsEditingName(true);
   };
 
-  const handleSaveName = async () => {
-    try {
-      const response = await fetch(`/api/briefs/${uuid}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editingName }),
-      });
-
-      if (response.ok) {
-        setName(editingName);
-        setIsEditingName(false);
-      }
-    } catch (error) {
-      console.error("Failed to save name:", error);
-    }
+  const handleSaveName = () => {
+    setBriefName(editingName);
+    setIsEditingName(false);
   };
 
   const handleCancelName = () => {
@@ -146,25 +115,13 @@ export default function BriefCanvas({
   };
 
   const handleEditDescription = () => {
-    setEditingDescription(description);
+    setEditingDescription(briefDescription);
     setIsEditingDescription(true);
   };
 
-  const handleSaveDescription = async () => {
-    try {
-      const response = await fetch(`/api/briefs/${uuid}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: editingDescription }),
-      });
-
-      if (response.ok) {
-        setDescription(editingDescription);
-        setIsEditingDescription(false);
-      }
-    } catch (error) {
-      console.error("Failed to save description:", error);
-    }
+  const handleSaveDescription = () => {
+    setBriefDescription(editingDescription);
+    setIsEditingDescription(false);
   };
 
   const handleCancelDescription = () => {
@@ -172,7 +129,7 @@ export default function BriefCanvas({
     setIsEditingDescription(false);
   };
 
-  const handleSettingChange = async (key: string, value: string) => {
+  const handleSettingChange = async (key: string, value: string | boolean) => {
     await updateSettings({ [key]: value });
   };
 
@@ -248,7 +205,7 @@ export default function BriefCanvas({
                   className="group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 hover:bg-gray-50"
                   onClick={handleEditName}
                 >
-                  <span className="text-sm">{name || "Click to add name"}</span>
+                  <span className="text-sm">{briefName || "Click to add name"}</span>
                   <Pencil className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100" />
                 </div>
               )}
@@ -297,7 +254,7 @@ export default function BriefCanvas({
                 >
                   <div className="flex items-start justify-between">
                     <p className="flex-1 text-sm whitespace-pre-wrap text-gray-700">
-                      {description || "Click to add details"}
+                      {briefDescription || "Click to add details"}
                     </p>
                     <Pencil className="ml-2 h-3 w-3 flex-shrink-0 text-gray-400 opacity-0 group-hover:opacity-100" />
                   </div>
@@ -405,6 +362,76 @@ export default function BriefCanvas({
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+              </details>
+            </div>
+
+            {/* Creative Assistant */}
+            <div className="mt-4 border-t border-gray-200 pt-4">
+              <details open>
+                <summary className="mb-3 cursor-pointer text-sm font-medium text-gray-700">
+                  Creative Assistant
+                </summary>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-gray-700">
+                      Enable Creative Assistant
+                    </label>
+                    <Switch
+                      checked={settings.caaEnabled}
+                      onCheckedChange={(checked) =>
+                        handleSettingChange("caaEnabled", checked)
+                      }
+                    />
+                  </div>
+
+                  {settings.caaEnabled && (
+                    <>
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-gray-500">
+                          Style
+                        </label>
+                        <Select
+                          value={settings.caaApproach}
+                          onValueChange={(value) =>
+                            handleSettingChange("caaApproach", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="simple">Simple</SelectItem>
+                            <SelectItem value="dramatic">Dramatic</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-gray-500">
+                          LLM
+                        </label>
+                        <Select
+                          value={settings.caaModel}
+                          onValueChange={(value) =>
+                            handleSettingChange("caaModel", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="anthropic/claude-sonnet-4">
+                              Claude Sonnet 4
+                            </SelectItem>
+                            <SelectItem value="openai/gpt-4.1-mini">
+                              GPT-4.1 Mini
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
                 </div>
               </details>
             </div>
@@ -517,7 +544,7 @@ export default function BriefCanvas({
 
       {/* Canvas */}
       <div className="min-w-[600px] flex-1">
-        <Canvas />
+        <Canvas briefName={briefName} briefDescription={briefDescription} />
       </div>
     </div>
   );

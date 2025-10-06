@@ -5,6 +5,7 @@ import { usePreferences } from "@/hooks/usePreferences";
 import { Stage, Layer, Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import { PixelCrop } from "react-image-crop";
+import { transformImageUrl } from "@/lib/utils/image-transform";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,7 +93,12 @@ function TransformableImage({
   );
 }
 
-export default function Canvas() {
+interface CanvasProps {
+  briefName?: string;
+  briefDescription?: string;
+}
+
+export default function Canvas({ briefName = "", briefDescription = "" }: CanvasProps) {
   // Zustand store
   const {
     images,
@@ -112,6 +118,7 @@ export default function Canvas() {
     redo,
     canUndo,
     canRedo,
+    getAllAssets,
   } = useCanvasStore();
 
   // Get Liveblocks state for leader check
@@ -989,17 +996,367 @@ export default function Canvas() {
     }
   };
 
+  // Helper: Create AI-generated post-it
+  const createAIPostIt = (text: string, position?: { x: number; y: number }) => {
+    // Smart positioning: top-right of selected images bounding box
+    const bounds = getSelectionBounds();
+
+    const posX = position?.x ?? (bounds ? bounds.x + bounds.width + 20 : 200);
+    const posY = position?.y ?? (bounds ? bounds.y : 200);
+
+    // Create canvas with grey background
+    const canvas = document.createElement("canvas");
+    const size = 200;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.fillStyle = "#E8E8E8"; // Grey for AI post-its
+    ctx.fillRect(0, 0, size, size);
+
+    const dataUrl = canvas.toDataURL();
+    const img = new window.Image();
+    img.crossOrigin = "anonymous";
+    img.src = dataUrl;
+
+    img.onload = () => {
+      addImage({
+        id: crypto.randomUUID(),
+        image: img,
+        width: size,
+        height: size,
+        x: posX,
+        y: posY,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        sourceType: "postit",
+        text: text,
+        color: "#E8E8E8",
+        isAIGenerated: true,
+        s3Url: dataUrl,
+      });
+    };
+  };
+
+  // Helper: Generate image with given prompt
+  const generateImageWithPrompt = async (enhancedPrompt: string) => {
+    const model = settings.imageGenerationModel;
+    const aspectRatio = settings.defaultAspectRatio;
+
+    // Always use square placeholder
+    const placeholderPath = "/loading/generating_1x1.png";
+    const width = 400;
+    const height = 400;
+
+    const imageId = crypto.randomUUID();
+    const newImageIndex = images.length;
+
+    // Calculate position in visible viewport
+    const centerX = (dimensions.width / 2 - stagePosition.x) / zoom;
+    const centerY = (dimensions.height / 2 - stagePosition.y) / zoom;
+
+    // Add random offset to avoid stacking
+    const offsetX = (Math.random() - 0.5) * 200;
+    const offsetY = (Math.random() - 0.5) * 200;
+
+    const x = centerX + offsetX - width / 2;
+    const y = centerY + offsetY - height / 2;
+
+    // Load placeholder PNG
+    const placeholderImage = new window.Image();
+    placeholderImage.crossOrigin = "anonymous";
+    placeholderImage.src = placeholderPath;
+
+    placeholderImage.onload = () => {
+      addImage({
+        id: imageId,
+        image: placeholderImage,
+        width,
+        height,
+        isGenerating: true,
+        sourceType: "generated",
+        prompt: enhancedPrompt,
+        x,
+        y,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+      });
+
+      // Generate image in background
+      (async () => {
+        try {
+          const response = await fetch("/api/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt: enhancedPrompt,
+              model,
+              aspectRatio,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            const generatedImg = new window.Image();
+            generatedImg.crossOrigin = "anonymous";
+            generatedImg.src = data.imageUrl;
+            generatedImg.onload = () => {
+              const MAX_SIZE = 500;
+              const scale = Math.min(
+                1,
+                MAX_SIZE / Math.max(generatedImg.width, generatedImg.height)
+              );
+              const scaledWidth = generatedImg.width * scale;
+              const scaledHeight = generatedImg.height * scale;
+
+              updateImage(newImageIndex, {
+                image: generatedImg,
+                s3Url: data.imageUrl,
+                s3Key: data.key,
+                isGenerating: false,
+                width: scaledWidth,
+                height: scaledHeight,
+              });
+              toast.success("Image generated successfully!");
+            };
+          } else {
+            setSelectedIndices([newImageIndex]);
+            setTimeout(() => deleteSelectedImages(), 0);
+            toast.error(data.error || "Failed to generate image");
+          }
+        } catch (error) {
+          console.error("Generate error:", error);
+          setSelectedIndices([newImageIndex]);
+          setTimeout(() => deleteSelectedImages(), 0);
+          toast.error("Failed to generate image");
+        }
+      })();
+    };
+  };
+
+  // Helper: Edit images with given prompt and inputs
+  const editImagesWithPrompt = async (
+    enhancedPrompt: string,
+    imageInputs: string[]
+  ) => {
+    const editingModel = settings.imageEditingModel;
+
+    // Validate flux-kontext with multiple images
+    if (editingModel === "flux-kontext" && imageInputs.length > 1) {
+      toast.error(
+        "flux-kontext only supports 1 reference image. Please select only 1 image or use nano-banana."
+      );
+      return;
+    }
+
+    const placeholderPath = "/loading/generating_1x1.png";
+    const width = 400;
+    const height = 400;
+
+    const imageId = crypto.randomUUID();
+    const newImageIndex = images.length;
+
+    // Calculate position in visible viewport
+    const centerX = (dimensions.width / 2 - stagePosition.x) / zoom;
+    const centerY = (dimensions.height / 2 - stagePosition.y) / zoom;
+
+    const offsetX = (Math.random() - 0.5) * 200;
+    const offsetY = (Math.random() - 0.5) * 200;
+
+    const x = centerX + offsetX - width / 2;
+    const y = centerY + offsetY - height / 2;
+
+    const placeholderImage = new window.Image();
+    placeholderImage.crossOrigin = "anonymous";
+    placeholderImage.src = placeholderPath;
+
+    placeholderImage.onload = () => {
+      addImage({
+        id: imageId,
+        image: placeholderImage,
+        width,
+        height,
+        isGenerating: true,
+        sourceType: "edited",
+        prompt: enhancedPrompt,
+        sourceImages: imageInputs,
+        x,
+        y,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+      });
+
+      // Edit image in background
+      (async () => {
+        try {
+          const response = await fetch("/api/edit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt: enhancedPrompt,
+              imageInputs,
+              model: editingModel,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            const editedImg = new window.Image();
+            editedImg.crossOrigin = "anonymous";
+            editedImg.src = data.imageUrl;
+            editedImg.onload = () => {
+              const MAX_SIZE = 500;
+              const scale = Math.min(
+                1,
+                MAX_SIZE / Math.max(editedImg.width, editedImg.height)
+              );
+              const scaledWidth = editedImg.width * scale;
+              const scaledHeight = editedImg.height * scale;
+
+              updateImage(newImageIndex, {
+                image: editedImg,
+                s3Url: data.imageUrl,
+                s3Key: data.key,
+                isGenerating: false,
+                width: scaledWidth,
+                height: scaledHeight,
+              });
+              toast.success("Image edited successfully!");
+            };
+          } else {
+            setSelectedIndices([newImageIndex]);
+            setTimeout(() => deleteSelectedImages(), 0);
+            toast.error(data.error || "Failed to edit image");
+          }
+        } catch (error) {
+          console.error("Edit error:", error);
+          setSelectedIndices([newImageIndex]);
+          setTimeout(() => deleteSelectedImages(), 0);
+          toast.error("Failed to edit image");
+        }
+      })();
+    };
+  };
+
   const handleGenerateImage = async () => {
     if (!prompt.trim()) return;
 
     const promptText = prompt;
 
-    // Check if we're editing (images selected) or generating
+    // Gather selected images and post-its
     const selectedImages = selectedIndices
       .map((index) => images[index])
-      .filter((img) => img && img.s3Url); // Only images with s3Url (uploaded/generated)
+      .filter((img) => img && img.s3Url && img.sourceType !== "postit" && img.sourceType !== "sticker");
 
-    const isEditing = selectedImages.length > 0;
+    const selectedPostits = selectedIndices
+      .map((index) => images[index])
+      .filter((img) => img?.sourceType === "postit")
+      .map((img) => ({
+        id: img.id,
+        text: img.text || "",
+        color: img.color || "",
+      }));
+
+    // If Creative Assistant is enabled, route through CAA
+    if (settings.caaEnabled) {
+      try {
+        // Clear prompt input
+        setPrompt("");
+
+        // Show loading toast
+        toast.loading("✨ Creative Assistant working...", { id: "creative-assistant" });
+
+        const caaResponse = await fetch("/api/caa", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            context: {
+              userPrompt: promptText,
+              briefName,
+              briefDescription,
+              selectedImages: selectedImages.map((img) => ({
+                id: img.id,
+                s3Url: img.s3Url!,
+                prompt: img.prompt,
+                sourceType: img.sourceType,
+                transformedUrl: transformImageUrl(img.s3Url!, {
+                  width: 1024,
+                  height: 1024,
+                  fit: "scale-down",
+                }),
+              })),
+              selectedPostits,
+              availableAssets: getAllAssets(),
+              settings: {
+                approach: settings.caaApproach,
+                model: settings.caaModel,
+                imageGenerationModel: settings.imageGenerationModel,
+                imageEditingModel: settings.imageEditingModel,
+              },
+            },
+          }),
+        });
+
+        const caaData = await caaResponse.json();
+
+        // Dismiss loading toast
+        toast.dismiss("creative-assistant");
+
+        if (!caaResponse.ok) {
+          toast.error(caaData.error || "Creative Assistant failed");
+          return;
+        }
+
+        // Handle Creative Assistant response
+        if (caaData.action === "answer") {
+          // Create AI post-it with answer (position calculated automatically)
+          createAIPostIt(caaData.postit.text);
+          return;
+        }
+
+        if (caaData.postit) {
+          // Create explanatory post-it (position calculated automatically)
+          createAIPostIt(caaData.postit.text);
+        }
+
+        // Continue with generation/editing using enhanced prompt
+        if (caaData.action === "generate" || caaData.action === "generate_and_note") {
+          // Use enhanced prompt for generation
+          await generateImageWithPrompt(caaData.enhancedPrompt);
+        } else if (caaData.action === "edit") {
+          // Use enhanced prompt and imageInputs for editing
+          await editImagesWithPrompt(
+            caaData.enhancedPrompt,
+            caaData.imageInputs || selectedImages.map((img) => img.s3Url!)
+          );
+        }
+
+        return;
+      } catch (error) {
+        toast.dismiss("creative-assistant");
+        console.error("Creative Assistant error:", error);
+        toast.error("Creative Assistant failed");
+        return;
+      }
+    }
+
+    // Original flow (CAA disabled)
+
+    // Clear prompt input
+    setPrompt("");
+
+    // Check if we're editing (images selected) or generating
+    const editableImages = selectedIndices
+      .map((index) => images[index])
+      .filter((img) => img && img.s3Url && img.sourceType !== "postit" && img.sourceType !== "sticker");
+
+    const isEditing = editableImages.length > 0;
 
     // Validate: check if any selected images are still uploading/generating
     const hasUploadingImages = selectedIndices.some((index) => {
@@ -1014,206 +1371,11 @@ export default function Canvas() {
 
     if (isEditing) {
       // IMAGE EDITING MODE
-      const editingModel = settings.imageEditingModel;
-
-      // Validate flux-kontext with multiple images
-      if (editingModel === "flux-kontext" && selectedImages.length > 1) {
-        toast.error(
-          "flux-kontext only supports 1 reference image. Please select only 1 image or use nano-banana.",
-        );
-        return;
-      }
-
-      const imageInputs = selectedImages.map((img) => img.s3Url!);
-
-      // Use a generic placeholder (1:1) for editing
-      const placeholderPath = "/loading/generating_1x1.png";
-      const width = 400;
-      const height = 400;
-
-      const imageId = crypto.randomUUID();
-      const newImageIndex = images.length;
-
-      // Calculate position in visible viewport
-      const centerX = (dimensions.width / 2 - stagePosition.x) / zoom;
-      const centerY = (dimensions.height / 2 - stagePosition.y) / zoom;
-
-      const offsetX = (Math.random() - 0.5) * 200;
-      const offsetY = (Math.random() - 0.5) * 200;
-
-      const x = centerX + offsetX - width / 2;
-      const y = centerY + offsetY - height / 2;
-
-      const placeholderImage = new window.Image();
-      placeholderImage.crossOrigin = "anonymous";
-      placeholderImage.src = placeholderPath;
-
-      placeholderImage.onload = () => {
-        addImage({
-          id: imageId,
-          image: placeholderImage,
-          width,
-          height,
-          isGenerating: true,
-          sourceType: "edited",
-          prompt: promptText,
-          sourceImages: imageInputs,
-          x,
-          y,
-          rotation: 0,
-          scaleX: 1,
-          scaleY: 1,
-        });
-
-        // Edit image in background
-        (async () => {
-          try {
-            const response = await fetch("/api/edit", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                prompt: promptText,
-                imageInputs,
-                model: editingModel,
-              }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-              const editedImg = new window.Image();
-              editedImg.crossOrigin = "anonymous";
-              editedImg.src = data.imageUrl;
-              editedImg.onload = () => {
-                // Use actual image dimensions, scale to max 500px
-                const MAX_SIZE = 500;
-                const scale = Math.min(
-                  1,
-                  MAX_SIZE / Math.max(editedImg.width, editedImg.height),
-                );
-                const scaledWidth = editedImg.width * scale;
-                const scaledHeight = editedImg.height * scale;
-
-                updateImage(newImageIndex, {
-                  image: editedImg,
-                  s3Url: data.imageUrl,
-                  s3Key: data.key,
-                  isGenerating: false,
-                  width: scaledWidth,
-                  height: scaledHeight,
-                });
-                toast.success("Image edited successfully!");
-              };
-            } else {
-              setSelectedIndices([newImageIndex]);
-              setTimeout(() => deleteSelectedImages(), 0);
-              toast.error(data.error || "Failed to edit image");
-            }
-          } catch (error) {
-            console.error("Edit error:", error);
-            setSelectedIndices([newImageIndex]);
-            setTimeout(() => deleteSelectedImages(), 0);
-            toast.error("Failed to edit image");
-          }
-        })();
-      };
+      const imageInputs = editableImages.map((img) => img.s3Url!);
+      await editImagesWithPrompt(promptText, imageInputs);
     } else {
       // IMAGE GENERATION MODE
-      const model = settings.imageGenerationModel;
-      const aspectRatio = settings.defaultAspectRatio;
-
-      // Always use square placeholder
-      const placeholderPath = "/loading/generating_1x1.png";
-      const width = 400;
-      const height = 400;
-
-      const imageId = crypto.randomUUID();
-      const newImageIndex = images.length;
-
-      // Calculate position in visible viewport
-      // Center of visible area
-      const centerX = (dimensions.width / 2 - stagePosition.x) / zoom;
-      const centerY = (dimensions.height / 2 - stagePosition.y) / zoom;
-
-      // Add random offset to avoid stacking
-      const offsetX = (Math.random() - 0.5) * 200; // Random offset ±100px
-      const offsetY = (Math.random() - 0.5) * 200;
-
-      const x = centerX + offsetX - width / 2; // Subtract half width to center the image
-      const y = centerY + offsetY - height / 2;
-
-      // Load placeholder PNG
-      const placeholderImage = new window.Image();
-      placeholderImage.crossOrigin = "anonymous";
-      placeholderImage.src = placeholderPath;
-
-      placeholderImage.onload = () => {
-        // Add placeholder to canvas (no s3Url so it won't be saved)
-        addImage({
-          id: imageId,
-          image: placeholderImage,
-          width,
-          height,
-          isGenerating: true,
-          sourceType: "generated",
-          prompt: promptText,
-          x,
-          y,
-          rotation: 0,
-          scaleX: 1,
-          scaleY: 1,
-        });
-
-        // Generate image in background
-        (async () => {
-          try {
-            const response = await fetch("/api/generate", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ prompt: promptText, model, aspectRatio }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-              // Load the generated image
-              const generatedImg = new window.Image();
-              generatedImg.crossOrigin = "anonymous";
-              generatedImg.src = data.imageUrl;
-              generatedImg.onload = () => {
-                // Use actual image dimensions, scale to max 500px
-                const MAX_SIZE = 500;
-                const scale = Math.min(
-                  1,
-                  MAX_SIZE / Math.max(generatedImg.width, generatedImg.height),
-                );
-                const scaledWidth = generatedImg.width * scale;
-                const scaledHeight = generatedImg.height * scale;
-
-                updateImage(newImageIndex, {
-                  image: generatedImg,
-                  s3Url: data.imageUrl,
-                  s3Key: data.key,
-                  isGenerating: false,
-                  width: scaledWidth,
-                  height: scaledHeight,
-                });
-                toast.success("Image generated successfully!");
-              };
-            } else {
-              // Remove placeholder on error
-              setSelectedIndices([newImageIndex]);
-              setTimeout(() => deleteSelectedImages(), 0);
-              toast.error(data.error || "Failed to generate image");
-            }
-          } catch (error) {
-            console.error("Generate error:", error);
-            setSelectedIndices([newImageIndex]);
-            setTimeout(() => deleteSelectedImages(), 0);
-            toast.error("Failed to generate image");
-          }
-        })();
-      };
+      await generateImageWithPrompt(promptText);
     }
   };
 

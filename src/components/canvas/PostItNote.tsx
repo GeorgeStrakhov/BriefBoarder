@@ -91,6 +91,7 @@ export default function PostItNote({
         align="left"
         verticalAlign="top"
         wrap="word"
+        ellipsis={true}
       />
     </Group>
   );

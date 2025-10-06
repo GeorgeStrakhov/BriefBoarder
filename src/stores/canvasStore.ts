@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { liveblocks } from "@liveblocks/zustand";
 import { liveblocksClient } from "@/lib/liveblocks";
 import Konva from "konva";
+import { Asset, PREDEFINED_ASSETS } from "@/config/assets";
 
 export type ImageSourceType =
   | "generated" // AI generated from scratch
@@ -33,6 +34,7 @@ export interface CanvasImage {
   // Type-specific metadata
   text?: string; // For post-it notes
   color?: string; // For post-it notes
+  isAIGenerated?: boolean; // For AI-generated post-it notes
 
   // Transform properties
   x: number;
@@ -65,6 +67,7 @@ export interface SerializableImageState {
   // Type-specific metadata
   text?: string;
   color?: string;
+  isAIGenerated?: boolean;
 }
 
 // Store imageRefs outside of Zustand to avoid re-render loops
@@ -124,6 +127,7 @@ const serializeImages = (images: CanvasImage[]): SerializableImageState[] => {
       sourceImages: img.sourceImages,
       text: img.text,
       color: img.color,
+      isAIGenerated: img.isAIGenerated,
     }));
 };
 
@@ -156,6 +160,7 @@ const deserializeImages = async (
             sourceImages: data.sourceImages,
             text: data.text,
             color: data.color,
+            isAIGenerated: data.isAIGenerated,
             uploading: false,
           });
         };
@@ -198,11 +203,17 @@ const clearHistory = () => {
   historyStep = -1;
 };
 
+export type CAAApproachId = "simple" | "dramatic";
+
 export interface BriefSettings {
   imageGenerationModel: string;
   imageEditingModel: string;
   imageUpscalingModel: string;
   defaultAspectRatio: string;
+  // Creative Approach Agent settings
+  caaEnabled: boolean;
+  caaApproach: CAAApproachId;
+  caaModel: "anthropic/claude-sonnet-4" | "openai/gpt-4.1-mini";
 }
 
 interface CanvasState {
@@ -216,7 +227,10 @@ interface CanvasState {
   isInitialLoad: boolean;
   zoom: number; // Synced
   stagePosition: { x: number; y: number }; // Synced
-  settings: BriefSettings; // Synced
+  briefName: string; // Synced - collaborative brief name
+  briefDescription: string; // Synced - collaborative brief description
+  settings: BriefSettings; // Local only - user preferences
+  customAssets: Asset[]; // Synced - user-uploaded assets
 
   // Non-reactive metadata
   lastSavedState: string;
@@ -232,12 +246,19 @@ interface CanvasState {
   updateImageTransform: (index: number, node: Konva.Image) => void;
   setZoom: (zoom: number) => void;
   setStagePosition: (position: { x: number; y: number }) => void;
+  setBriefName: (name: string) => void;
+  setBriefDescription: (description: string) => void;
   saveToDatabase: () => Promise<void>;
   markUnsaved: () => void;
   reset: () => void;
 
   // Settings actions
   updateSettings: (settings: Partial<BriefSettings>) => Promise<void>;
+
+  // Asset actions
+  addCustomAsset: (asset: Asset) => void;
+  removeCustomAsset: (name: string) => void;
+  getAllAssets: () => Asset[];
 
   // History actions
   undo: () => Promise<void>;
@@ -259,12 +280,31 @@ export const useCanvasStore = create<CanvasState>()(
   isInitialLoad: false,
   zoom: 1,
   stagePosition: { x: 0, y: 0 },
-  settings: {
-    imageGenerationModel: "imagen-4-ultra",
-    imageEditingModel: "nano-banana",
-    imageUpscalingModel: "topaz-image-upscaler",
-    defaultAspectRatio: "1:1",
-  },
+  briefName: "",
+  briefDescription: "",
+  settings: (() => {
+    // Load settings from localStorage, fallback to defaults
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("briefSettings");
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+    }
+    return {
+      imageGenerationModel: "imagen-4-ultra",
+      imageEditingModel: "nano-banana",
+      imageUpscalingModel: "topaz-image-upscaler",
+      defaultAspectRatio: "1:1",
+      caaEnabled: true,
+      caaApproach: "simple",
+      caaModel: "openai/gpt-4.1-mini",
+    };
+  })(),
+  customAssets: [],
   lastSavedState: "",
 
   setBriefId: (id) => set({ briefId: id }),
@@ -312,6 +352,7 @@ export const useCanvasStore = create<CanvasState>()(
                   sourceImages: imgData.sourceImages,
                   text: imgData.text,
                   color: imgData.color,
+                  isAIGenerated: imgData.isAIGenerated,
                   uploading: false,
                 });
               };
@@ -330,22 +371,8 @@ export const useCanvasStore = create<CanvasState>()(
           syncedImages: serializedImages, // IMPORTANT: Set both together to prevent sync loop
           zoom: brief.canvasState.zoom ?? 1,
           stagePosition: brief.canvasState.stagePosition ?? { x: 0, y: 0 },
-          settings: brief.settings
-            ? {
-                imageGenerationModel:
-                  brief.settings.imageGenerationModel ?? "imagen-4-ultra",
-                imageEditingModel:
-                  brief.settings.imageEditingModel ?? "nano-banana",
-                imageUpscalingModel:
-                  brief.settings.imageUpscalingModel ?? "topaz-image-upscaler",
-                defaultAspectRatio: brief.settings.defaultAspectRatio ?? "1:1",
-              }
-            : {
-                imageGenerationModel: "imagen-4-ultra",
-                imageEditingModel: "nano-banana",
-                imageUpscalingModel: "topaz-image-upscaler",
-                defaultAspectRatio: "1:1",
-              },
+          briefName: brief.name ?? "",
+          briefDescription: brief.description ?? "",
           lastSavedState: stateString,
           saveStatus: "saved",
           isLoading: false,
@@ -359,7 +386,13 @@ export const useCanvasStore = create<CanvasState>()(
         previousImages = loadedImages;
         previousSyncedImages = serializedImages;
       } else {
-        set({ isLoading: false, isInitialLoad: false });
+        // No images but still set brief name/description
+        set({
+          briefName: brief.name ?? "",
+          briefDescription: brief.description ?? "",
+          isLoading: false,
+          isInitialLoad: false,
+        });
       }
     } catch (error) {
       console.error("Failed to load brief:", error);
@@ -510,12 +543,24 @@ export const useCanvasStore = create<CanvasState>()(
     get().markUnsaved();
   },
 
+  setBriefName: (name) => {
+    set({ briefName: name });
+    get().markUnsaved();
+  },
+
+  setBriefDescription: (description) => {
+    set({ briefDescription: description });
+    get().markUnsaved();
+  },
+
   saveToDatabase: async () => {
     const {
       briefId,
       images,
       zoom,
       stagePosition,
+      briefName,
+      briefDescription,
       lastSavedState,
       isInitialLoad,
     } = get();
@@ -544,6 +589,7 @@ export const useCanvasStore = create<CanvasState>()(
             sourceImages: imgData.sourceImages,
             text: imgData.text,
             color: imgData.color,
+            isAIGenerated: imgData.isAIGenerated,
           };
         })
         .filter((img) => img.s3Url), // Only save uploaded images
@@ -564,7 +610,11 @@ export const useCanvasStore = create<CanvasState>()(
       const response = await fetch(`/api/briefs/${briefId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ canvasState }),
+        body: JSON.stringify({
+          name: briefName,
+          description: briefDescription,
+          canvasState,
+        }),
       });
 
       if (response.ok) {
@@ -598,33 +648,49 @@ export const useCanvasStore = create<CanvasState>()(
       isInitialLoad: false,
       zoom: 1,
       stagePosition: { x: 0, y: 0 },
-      settings: {
-        imageGenerationModel: "imagen-4-ultra",
-        imageEditingModel: "nano-banana",
-        imageUpscalingModel: "topaz-image-upscaler",
-        defaultAspectRatio: "1:1",
-      },
+      briefName: "",
+      briefDescription: "",
+      customAssets: [],
       lastSavedState: "",
+      // NOTE: settings are NOT reset - they persist from localStorage
     });
   },
 
   // Settings actions
   updateSettings: async (newSettings) => {
-    const { briefId, settings } = get();
-    if (!briefId) return;
+    const { settings } = get();
 
     const updatedSettings = { ...settings, ...newSettings };
     set({ settings: updatedSettings });
 
-    try {
-      await fetch(`/api/briefs/${briefId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ settings: updatedSettings }),
-      });
-    } catch (error) {
-      console.error("Failed to save settings:", error);
+    // Save settings to localStorage (user preferences)
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("briefSettings", JSON.stringify(updatedSettings));
+      } catch (error) {
+        console.error("Failed to save settings to localStorage:", error);
+      }
     }
+  },
+
+  // Asset actions
+  addCustomAsset: (asset) => {
+    set((state) => ({
+      customAssets: [...state.customAssets, asset],
+    }));
+    get().markUnsaved();
+  },
+
+  removeCustomAsset: (name) => {
+    set((state) => ({
+      customAssets: state.customAssets.filter((a) => a.name !== name),
+    }));
+    get().markUnsaved();
+  },
+
+  getAllAssets: () => {
+    const { customAssets } = get();
+    return [...PREDEFINED_ASSETS, ...customAssets];
   },
 
   // History actions
@@ -669,8 +735,12 @@ export const useCanvasStore = create<CanvasState>()(
       storageMapping: {
         // Sync these fields across all users
         syncedImages: true, // Serializable version (no HTMLImageElement)
-        settings: true,
-        // NOTE: zoom and stagePosition are NOT synced - each user controls their own viewport
+        zoom: true,
+        stagePosition: true,
+        briefName: true, // Collaborative brief name
+        briefDescription: true, // Collaborative brief description
+        customAssets: true, // Custom user-uploaded assets
+        // NOTE: settings are local (localStorage) - each user has their own preferences
       },
       presenceMapping: {
         // Per-user ephemeral state

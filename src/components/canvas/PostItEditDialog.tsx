@@ -77,8 +77,10 @@ export default function PostItEditDialog({
             onChange={(e) => setText(e.target.value)}
             placeholder="Enter your note..."
             rows={6}
-            className="resize-none"
+            className="resize-none overflow-y-scroll"
             autoFocus
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
           />
 
           {/* Color picker */}
