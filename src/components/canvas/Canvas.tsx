@@ -823,20 +823,26 @@ export default function Canvas({
     });
   };
 
-  const handleGenerateImage = async () => {
-    await processImageGeneration(prompt, briefName, briefDescription, getAllAssets, {
-      images,
-      settings,
-      dimensions,
-      stagePosition,
-      zoom,
-      selectedIndices,
-      addImage,
-      updateImage,
-      setSelectedIndices,
-      deleteSelectedImages,
-      getAllImageRefs,
-    });
+  const handleGenerateImage = async (overridePrompt?: string) => {
+    await processImageGeneration(
+      overridePrompt ?? prompt,
+      briefName,
+      briefDescription,
+      getAllAssets,
+      {
+        images,
+        settings,
+        dimensions,
+        stagePosition,
+        zoom,
+        selectedIndices,
+        addImage,
+        updateImage,
+        setSelectedIndices,
+        deleteSelectedImages,
+        getAllImageRefs,
+      },
+    );
   };
 
   // Get count of selected images with s3Url (ready for editing)

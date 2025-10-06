@@ -8,7 +8,7 @@ import { toast } from "sonner";
 interface GenerateIslandProps {
   prompt: string;
   onPromptChange: (value: string) => void;
-  onGenerate: () => void;
+  onGenerate: (overridePrompt?: string) => void;
   isMounted: boolean;
   caaEnabled: boolean;
   caaApproach: string;
@@ -29,10 +29,8 @@ export default function GenerateIsland({
   const { state, startRecording, stopRecording, cleanup } = useVoiceRecording({
     onTranscriptionComplete: (text) => {
       onPromptChange(text);
-      // Auto-generate after transcription
-      setTimeout(() => {
-        onGenerate();
-      }, 100);
+      // Auto-generate with the transcribed text directly (avoid state update race condition)
+      onGenerate(text);
     },
     onError: (error) => {
       toast.error(error);
@@ -69,7 +67,7 @@ export default function GenerateIsland({
       case "transcribing":
         return <Loader2 className="h-5 w-5 animate-spin" />;
       case "recording":
-        return <Mic className="h-5 w-5 text-red-600 fill-red-600" />;
+        return <Mic className="h-5 w-5 text-red-600 animate-pulse" />;
       case "error":
         return <Mic className="h-5 w-5 text-red-500" />;
       default:

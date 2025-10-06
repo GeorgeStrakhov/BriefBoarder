@@ -610,6 +610,13 @@ export const useCanvasStore = create<CanvasState>()(
                 text: imgData.text,
                 color: imgData.color,
                 isAIGenerated: imgData.isAIGenerated,
+                // Text element font properties
+                fontFamily: imgData.fontFamily,
+                lineHeight: imgData.lineHeight,
+                bold: imgData.bold,
+                italic: imgData.italic,
+                textAlign: imgData.textAlign,
+                shadow: imgData.shadow,
               };
             })
             .filter((img) => img.s3Url), // Only save uploaded images
