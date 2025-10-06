@@ -1,6 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Mic, Loader2 } from "lucide-react";
+import { useVoiceRecording } from "@/hooks/useVoiceRecording";
+import { useEffect } from "react";
+import { toast } from "sonner";
 
 interface GenerateIslandProps {
   prompt: string;
@@ -23,6 +26,57 @@ export default function GenerateIsland({
   imageEditingModel,
   readySelectedCount,
 }: GenerateIslandProps) {
+  const { state, startRecording, stopRecording, cleanup } = useVoiceRecording({
+    onTranscriptionComplete: (text) => {
+      onPromptChange(text);
+      // Auto-generate after transcription
+      setTimeout(() => {
+        onGenerate();
+      }, 100);
+    },
+    onError: (error) => {
+      toast.error(error);
+    },
+  });
+
+  useEffect(() => {
+    return () => {
+      cleanup();
+    };
+  }, [cleanup]);
+
+  const handleMouseDown = () => {
+    startRecording();
+  };
+
+  const handleMouseUp = () => {
+    stopRecording();
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    startRecording();
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
+    stopRecording();
+  };
+
+  const getMicButtonContent = () => {
+    switch (state) {
+      case "requesting-permission":
+      case "transcribing":
+        return <Loader2 className="h-5 w-5 animate-spin" />;
+      case "recording":
+        return <Mic className="h-5 w-5 text-red-600 fill-red-600" />;
+      case "error":
+        return <Mic className="h-5 w-5 text-red-500" />;
+      default:
+        return <Mic className="h-5 w-5" />;
+    }
+  };
+
   return (
     <div
       style={{
@@ -52,6 +106,20 @@ export default function GenerateIsland({
         </div>
       )}
       <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+        <Button
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          disabled={state === "requesting-permission" || state === "transcribing"}
+          size="icon"
+          variant="outline"
+          className="h-[80px] w-[80px] flex-shrink-0"
+          title="Press and hold to record"
+        >
+          {getMicButtonContent()}
+        </Button>
         <Textarea
           value={prompt}
           onChange={(e) => onPromptChange(e.target.value)}

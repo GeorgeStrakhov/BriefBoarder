@@ -17,6 +17,14 @@ import {
   editImagesWithPrompt as editImages,
   handleGenerateImage as processImageGeneration,
 } from "./handlers/generationHandlers";
+import {
+  handleDrop as processDrop,
+  handleDragOver as processDragOver,
+} from "./handlers/dropHandlers";
+import {
+  handleDownloadBoard as downloadBoard,
+  handleMergeSelection as mergeSelection,
+} from "./handlers/exportHandlers";
 import { Stage, Layer, Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import { PixelCrop } from "react-image-crop";
@@ -228,234 +236,22 @@ export default function Canvas({
   }, [selectedIndices]);
 
   const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-
-    // Check if it's a sticker or asset drop
-    const stickerEmoji = e.dataTransfer.getData("sticker");
-    const assetUrl = e.dataTransfer.getData("asset");
-
-    if (stickerEmoji) {
-      // Special handling for pencil emoji - open text dialog
-      if (stickerEmoji === "✏️") {
-        if (!stageRef.current || !containerRef.current) return;
-
-        // Get drop position relative to container
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const x = e.clientX - containerRect.left;
-        const y = e.clientY - containerRect.top;
-
-        // Transform to stage coordinates (accounting for zoom and pan)
-        const stage = stageRef.current;
-        const stageX = (x - stage.x()) / zoom;
-        const stageY = (y - stage.y()) / zoom;
-
-        // Store drop position for text creation
-        setTextDropPosition({ x: stageX, y: stageY });
-        handleCreateText();
-        return;
-      }
-
-      // Special handling for memo emoji - open post-it dialog
-      if (stickerEmoji === "📝") {
-        if (!stageRef.current || !containerRef.current) return;
-
-        // Get drop position relative to container
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const x = e.clientX - containerRect.left;
-        const y = e.clientY - containerRect.top;
-
-        // Transform to stage coordinates (accounting for zoom and pan)
-        const stage = stageRef.current;
-        const stageX = (x - stage.x()) / zoom;
-        const stageY = (y - stage.y()) / zoom;
-
-        // Store drop position for post-it creation
-        setPostItDropPosition({ x: stageX, y: stageY });
-        handleCreatePostIt();
-        return;
-      }
-
-      // Handle sticker drop
-      if (!stageRef.current || !containerRef.current) return;
-
-      // Get drop position relative to container
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const x = e.clientX - containerRect.left;
-      const y = e.clientY - containerRect.top;
-
-      // Transform to stage coordinates (accounting for zoom and pan)
-      const stage = stageRef.current;
-      const stageX = (x - stage.x()) / zoom;
-      const stageY = (y - stage.y()) / zoom;
-
-      // Create canvas to render emoji as image
-      const canvas = document.createElement("canvas");
-      const size = 100;
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      ctx.font = `${size * 0.8}px serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(stickerEmoji, size / 2, size / 2);
-
-      const dataUrl = canvas.toDataURL();
-      const img = new window.Image();
-      img.crossOrigin = "anonymous";
-      img.src = dataUrl;
-      img.onload = () => {
-        addImage({
-          id: crypto.randomUUID(),
-          image: img,
-          width: size,
-          height: size,
-          x: stageX - size / 2,
-          y: stageY - size / 2,
-          rotation: 0,
-          scaleX: 1,
-          scaleY: 1,
-          sourceType: "sticker",
-          s3Url: dataUrl, // Use data URL for stickers (no need to upload)
-        });
-      };
-      return;
-    }
-
-    if (assetUrl) {
-      // Handle asset drop
-      if (!stageRef.current || !containerRef.current) return;
-
-      // Get drop position relative to container
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const x = e.clientX - containerRect.left;
-      const y = e.clientY - containerRect.top;
-
-      // Transform to stage coordinates (accounting for zoom and pan)
-      const stage = stageRef.current;
-      const stageX = (x - stage.x()) / zoom;
-      const stageY = (y - stage.y()) / zoom;
-
-      const img = new window.Image();
-      img.crossOrigin = "anonymous";
-      img.src = assetUrl;
-      img.onload = () => {
-        const MAX_SIZE = 150;
-        const scale = Math.min(1, MAX_SIZE / Math.max(img.width, img.height));
-        const scaledWidth = img.width * scale;
-        const scaledHeight = img.height * scale;
-
-        addImage({
-          id: crypto.randomUUID(),
-          image: img,
-          width: scaledWidth,
-          height: scaledHeight,
-          x: stageX - scaledWidth / 2,
-          y: stageY - scaledHeight / 2,
-          rotation: 0,
-          scaleX: 1,
-          scaleY: 1,
-          sourceType: "asset",
-          s3Url: assetUrl,
-        });
-      };
-      img.onerror = (e) => {
-        console.error("Failed to load asset:", assetUrl, e);
-        toast.error("Failed to load asset - check CORS configuration");
-      };
-      return;
-    }
-
-    // Handle file drop (existing logic)
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const img = new window.Image();
-        img.crossOrigin = "anonymous";
-        img.src = event.target?.result as string;
-        img.onload = async () => {
-          const MAX_SIZE = 500;
-          const scale = Math.min(1, MAX_SIZE / Math.max(img.width, img.height));
-          const scaledWidth = img.width * scale;
-          const scaledHeight = img.height * scale;
-
-          const imageId = crypto.randomUUID();
-          const newImageIndex = images.length;
-
-          // Add image to canvas immediately (optimistic UI)
-          addImage({
-            id: imageId,
-            image: img,
-            width: scaledWidth,
-            height: scaledHeight,
-            uploading: true,
-            sourceType: "uploaded",
-            x: 100,
-            y: 100,
-            rotation: 0,
-            scaleX: 1,
-            scaleY: 1,
-          });
-
-          // Upload to S3 in background
-          try {
-            const formData = new FormData();
-            formData.append("file", file);
-
-            const response = await fetch("/api/upload", {
-              method: "POST",
-              body: formData,
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-              // Update image with S3 info
-              updateImage(newImageIndex, {
-                s3Url: data.s3Url,
-                s3Key: data.s3Key,
-                uploading: false,
-              });
-
-              // Generate description in background
-              (async () => {
-                try {
-                  const describeResponse = await fetch("/api/describe-image", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ imageUrl: data.s3Url }),
-                  });
-
-                  if (describeResponse.ok) {
-                    const describeData = await describeResponse.json();
-                    // Update image with generated prompt
-                    updateImage(newImageIndex, {
-                      prompt: describeData.description,
-                    });
-                  }
-                } catch (error) {
-                  console.error("Failed to generate description:", error);
-                  // Don't show error to user, just log it
-                }
-              })();
-            } else {
-              console.error("Upload failed:", data.error);
-              updateImage(newImageIndex, { uploading: false });
-            }
-          } catch (error) {
-            console.error("Upload error:", error);
-            updateImage(newImageIndex, { uploading: false });
-          }
-        };
-      };
-      reader.readAsDataURL(file);
-    }
+    await processDrop(e, {
+      stageRef,
+      containerRef,
+      zoom,
+      images,
+      addImage,
+      updateImage,
+      setTextDropPosition,
+      setPostItDropPosition,
+      handleCreateText,
+      handleCreatePostIt,
+    });
   };
 
   const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
+    processDragOver(e);
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -914,338 +710,27 @@ export default function Canvas({
   };
 
   const handleDownloadBoard = async (includeReactions: boolean) => {
-    if (!stageRef.current || images.length === 0) {
-      toast.error("No images to download");
-      return;
-    }
-
-    try {
-      const stage = stageRef.current;
-      const layer = stage.getLayers()[0]; // Get the first (and only) layer
-      const imageRefsMap = getAllImageRefs();
-      const { briefId } = useCanvasStore.getState();
-
-      // Filter images based on includeReactions parameter
-      // Always include assets, only exclude reactions if includeReactions is false
-      const exportableImages = images
-        .map((img, index) => ({ img, index }))
-        .filter(
-          ({ img }) =>
-            includeReactions ||
-            (img.sourceType !== "sticker" && img.sourceType !== "postit"),
-        );
-
-      if (exportableImages.length === 0) {
-        toast.error("No images to download");
-        return;
-      }
-
-      // Calculate bounding box of all exportable images (accounting for rotation)
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity;
-
-      exportableImages.forEach(({ img }) => {
-        // Use the stored image properties directly
-        const imgX = img.x || 0;
-        const imgY = img.y || 0;
-        const imgWidth = img.width * (img.scaleX || 1);
-        const imgHeight = img.height * (img.scaleY || 1);
-        const rotation = img.rotation || 0;
-
-        // For rotated images, we need to calculate the bounding box
-        if (rotation !== 0) {
-          const centerX = imgX + imgWidth / 2;
-          const centerY = imgY + imgHeight / 2;
-          const rad = (rotation * Math.PI) / 180;
-          const cos = Math.cos(rad);
-          const sin = Math.sin(rad);
-
-          // Calculate the 4 corners
-          const corners = [
-            { x: imgX, y: imgY },
-            { x: imgX + imgWidth, y: imgY },
-            { x: imgX + imgWidth, y: imgY + imgHeight },
-            { x: imgX, y: imgY + imgHeight },
-          ];
-
-          corners.forEach((corner) => {
-            // Rotate around center
-            const dx = corner.x - centerX;
-            const dy = corner.y - centerY;
-            const rotatedX = centerX + (dx * cos - dy * sin);
-            const rotatedY = centerY + (dx * sin + dy * cos);
-
-            minX = Math.min(minX, rotatedX);
-            minY = Math.min(minY, rotatedY);
-            maxX = Math.max(maxX, rotatedX);
-            maxY = Math.max(maxY, rotatedY);
-          });
-        } else {
-          // No rotation, simple bounding box
-          minX = Math.min(minX, imgX);
-          minY = Math.min(minY, imgY);
-          maxX = Math.max(maxX, imgX + imgWidth);
-          maxY = Math.max(maxY, imgY + imgHeight);
-        }
-      });
-
-      const width = maxX - minX;
-      const height = maxY - minY;
-
-      // Add some padding
-      const padding = 50;
-      minX -= padding;
-      minY -= padding;
-      const exportWidth = width + padding * 2;
-      const exportHeight = height + padding * 2;
-
-      // Save current stage transforms
-      const originalScale = stage.scaleX();
-      const originalPosition = { x: stage.x(), y: stage.y() };
-
-      // Temporarily hide reactions if not including them
-      const hiddenIndices: number[] = [];
-      if (!includeReactions) {
-        images.forEach((img, index) => {
-          if (img.sourceType === "sticker" || img.sourceType === "postit") {
-            hiddenIndices.push(index);
-            const node = imageRefsMap.get(index);
-            if (node) node.visible(false);
-          }
-        });
-      }
-
-      // Reset stage transforms for export
-      stage.scale({ x: 1, y: 1 });
-      stage.position({ x: 0, y: 0 });
-      layer.batchDraw(); // Force redraw with new transforms
-
-      // Wait a frame to ensure layer has fully redrawn
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-
-      // Export from the LAYER with transforms reset (always use 2x quality)
-      const dataURL = layer.toDataURL({
-        x: minX,
-        y: minY,
-        width: exportWidth,
-        height: exportHeight,
-        pixelRatio: 2,
-      });
-
-      // Restore stage transforms
-      stage.scale({ x: originalScale, y: originalScale });
-      stage.position(originalPosition);
-
-      // Restore visibility of hidden items
-      hiddenIndices.forEach((index) => {
-        const node = imageRefsMap.get(index);
-        if (node) node.visible(true);
-      });
-
-      layer.batchDraw(); // Redraw with restored transforms
-
-      // Trigger download
-      const link = document.createElement("a");
-      const filename = briefId
-        ? `board-${includeReactions ? "and-notes-" : ""}${briefId}.png`
-        : `board${includeReactions ? "-with-notes" : ""}.png`;
-      link.download = filename;
-      link.href = dataURL;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast.success(
-        includeReactions ? "Board downloaded with notes!" : "Board downloaded!",
-      );
-    } catch (error) {
-      console.error("Download board error:", error);
-      toast.error("Failed to download board");
-    }
+    await downloadBoard(includeReactions, {
+      stageRef,
+      transformerRef,
+      images,
+      selectedIndices,
+      getAllImageRefs,
+      addImage,
+      setSelectedIndices,
+    });
   };
 
   const handleMergeSelection = async () => {
-    if (!stageRef.current || selectedIndices.length < 2) {
-      toast.error("Please select at least 2 items to merge");
-      return;
-    }
-
-    try {
-      const stage = stageRef.current;
-      const layer = stage.getLayers()[0];
-      const imageRefsMap = getAllImageRefs();
-
-      // Get selected images
-      const selectedImages = selectedIndices
-        .map((index) => ({ img: images[index], index }))
-        .filter(({ img }) => img !== undefined);
-
-      if (selectedImages.length === 0) {
-        toast.error("No valid items selected");
-        return;
-      }
-
-      // Calculate bounding box of selected items (accounting for rotation)
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity;
-
-      selectedImages.forEach(({ img }) => {
-        const imgX = img.x || 0;
-        const imgY = img.y || 0;
-        const imgWidth = img.width * (img.scaleX || 1);
-        const imgHeight = img.height * (img.scaleY || 1);
-        const rotation = img.rotation || 0;
-
-        // For rotated images, calculate the bounding box
-        if (rotation !== 0) {
-          const centerX = imgX + imgWidth / 2;
-          const centerY = imgY + imgHeight / 2;
-          const rad = (rotation * Math.PI) / 180;
-          const cos = Math.cos(rad);
-          const sin = Math.sin(rad);
-
-          const corners = [
-            { x: imgX, y: imgY },
-            { x: imgX + imgWidth, y: imgY },
-            { x: imgX + imgWidth, y: imgY + imgHeight },
-            { x: imgX, y: imgY + imgHeight },
-          ];
-
-          corners.forEach((corner) => {
-            const dx = corner.x - centerX;
-            const dy = corner.y - centerY;
-            const rotatedX = centerX + (dx * cos - dy * sin);
-            const rotatedY = centerY + (dx * sin + dy * cos);
-
-            minX = Math.min(minX, rotatedX);
-            minY = Math.min(minY, rotatedY);
-            maxX = Math.max(maxX, rotatedX);
-            maxY = Math.max(maxY, rotatedY);
-          });
-        } else {
-          minX = Math.min(minX, imgX);
-          minY = Math.min(minY, imgY);
-          maxX = Math.max(maxX, imgX + imgWidth);
-          maxY = Math.max(maxY, imgY + imgHeight);
-        }
-      });
-
-      const width = maxX - minX;
-      const height = maxY - minY;
-
-      // No padding for merge (tight crop)
-      const exportWidth = width;
-      const exportHeight = height;
-
-      // Save current stage transforms
-      const originalScale = stage.scaleX();
-      const originalPosition = { x: stage.x(), y: stage.y() };
-
-      // Temporarily hide non-selected items
-      const hiddenIndices: number[] = [];
-      images.forEach((_, index) => {
-        if (!selectedIndices.includes(index)) {
-          hiddenIndices.push(index);
-          const node = imageRefsMap.get(index);
-          if (node) node.visible(false);
-        }
-      });
-
-      // Hide transformer
-      if (transformerRef.current) {
-        transformerRef.current.visible(false);
-      }
-
-      // Temporarily clear selection to remove blue outlines
-      const savedSelection = [...selectedIndices];
-      setSelectedIndices([]);
-
-      // Reset stage transforms for export
-      stage.scale({ x: 1, y: 1 });
-      stage.position({ x: 0, y: 0 });
-      layer.batchDraw();
-
-      // Wait a frame for redraw
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-
-      // Export from the layer with high quality (3x for crisp results)
-      const dataURL = layer.toDataURL({
-        x: minX,
-        y: minY,
-        width: exportWidth,
-        height: exportHeight,
-        pixelRatio: 3,
-      });
-
-      // Restore stage transforms
-      stage.scale({ x: originalScale, y: originalScale });
-      stage.position(originalPosition);
-
-      // Restore visibility
-      hiddenIndices.forEach((index) => {
-        const node = imageRefsMap.get(index);
-        if (node) node.visible(true);
-      });
-
-      // Restore transformer
-      if (transformerRef.current) {
-        transformerRef.current.visible(true);
-      }
-
-      // Restore selection
-      setSelectedIndices(savedSelection);
-
-      layer.batchDraw();
-
-      // Convert dataURL to blob
-      const response = await fetch(dataURL);
-      const blob = await response.blob();
-
-      // Upload to S3
-      const formData = new FormData();
-      formData.append("file", blob, "merged.png");
-
-      const uploadResponse = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const uploadData = await uploadResponse.json();
-
-      if (uploadResponse.ok) {
-        // Load the merged image
-        const mergedImg = new window.Image();
-        mergedImg.crossOrigin = "anonymous";
-        mergedImg.src = uploadData.s3Url;
-        mergedImg.onload = () => {
-          // Place new image near the selection (offset by 50px)
-          addImage({
-            id: crypto.randomUUID(),
-            image: mergedImg,
-            width: exportWidth,
-            height: exportHeight,
-            x: minX + 50,
-            y: minY + 50,
-            rotation: 0,
-            scaleX: 1,
-            scaleY: 1,
-            sourceType: "uploaded",
-            s3Url: uploadData.s3Url,
-            s3Key: uploadData.s3Key,
-          });
-          toast.success("Selection merged successfully!");
-        };
-      } else {
-        toast.error(uploadData.error || "Failed to upload merged image");
-      }
-    } catch (error) {
-      console.error("Merge selection error:", error);
-      toast.error("Failed to merge selection");
-    }
+    await mergeSelection({
+      stageRef,
+      transformerRef,
+      images,
+      selectedIndices,
+      getAllImageRefs,
+      addImage,
+      setSelectedIndices,
+    });
   };
 
   const handleSaveCrop = async (
