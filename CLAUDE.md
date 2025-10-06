@@ -95,6 +95,7 @@ The Creative Assistant enhances user prompts with creative interpretation and in
 - Generation models: `imagen-4-ultra` (default), `flux-pro-1-1`, `flux-schnell`
 - Editing models: `nano-banana` (supports up to 8 images), `flux-kontext` (single image)
 - All images automatically uploaded to S3 after generation
+- **Image format handling**: All images converted to JPEG via Cloudflare image transformation before sending to editing models (nano-banana doesn't support transparent PNGs)
 
 ### Storage & Database
 
@@ -150,6 +151,20 @@ The Creative Assistant enhances user prompts with creative interpretation and in
 - Provides `updatePreference()` for setting values
 - Extensible for future user-specific settings (theme, layout preferences, etc.)
 
+### Assets System
+
+**Asset Management (`src/config/assets.ts`)**: Two-tier asset system for reusable brand elements:
+
+- **Preset Assets**: Defined in code via `getPresetAssets()`, available to all briefs (read-only)
+  - Stored in R2 at `assets/` folder (e.g., `assets/logo.png`)
+  - Lazy evaluation ensures CDN URL is available at runtime
+- **Custom Assets**: User-uploaded per brief, stored in `customAssets` field (synced via Liveblocks)
+  - Uploaded via `/api/upload` endpoint
+  - Stored in brief's `canvasState` JSONB field
+  - Collaborative - synced to all users in the room
+- **getAllAssets()**: Returns combined preset + custom assets
+- **CORS Requirements**: All asset images must have `crossOrigin="anonymous"` to work with canvas export and image editing
+
 ### Realtime Collaboration
 
 **Liveblocks Integration**: Multi-user realtime collaboration powered by Liveblocks Zustand middleware:
@@ -166,7 +181,7 @@ The Creative Assistant enhances user prompts with creative interpretation and in
 - Post-it notes (text and colors)
 - Stickers and reactions
 - Brief name and description
-- Custom assets (when implemented)
+- Custom assets (user-uploaded assets per brief)
 - User selections (see what others are selecting via Presence)
 
 **What stays local**:
@@ -186,8 +201,9 @@ The Creative Assistant enhances user prompts with creative interpretation and in
 - `REPLICATE_API_KEY` - For image generation/editing
 - `GROQ_API_KEY` - For structured LLM calls
 - `OPENROUTER_API_KEY` - For unstructured LLM calls
-- `S3_ENDPOINT_URL`, `S3_BUCKET_NAME`, `S3_ACCESS_ID_KEY`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` - R2/S3 configuration
-- `S3_PUBLIC_ENDPOINT` - CDN endpoint for serving images
+- `S3_ENDPOINT_URL`, `S3_BUCKET_NAME`, `S3_ACCESS_ID_KEY`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` - R2/S3 configuration (server-side)
+- `S3_PUBLIC_ENDPOINT` - CDN endpoint for serving images (server-side)
+- `NEXT_PUBLIC_S3_ENDPOINT` - CDN endpoint for client-side access (required for assets, image transformations)
 - `NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY` - Liveblocks public key (client-side)
 - `LIVEBLOCKS_SECRET_KEY` - Liveblocks secret key (server-side auth)
 
@@ -215,3 +231,30 @@ Images flow through these states:
 - History uses serialized state, deserialization re-downloads images from S3
 - Max 50 history steps, old states trimmed automatically
 - History pushed after: uploads, deletions, transforms, selection changes
+
+### Preventing Hydration Errors
+
+Components that use localStorage-based settings (like `settings` from canvasStore) must prevent SSR/client mismatches:
+
+```typescript
+const [isMounted, setIsMounted] = useState(false);
+
+useEffect(() => {
+  setIsMounted(true);
+}, []);
+
+// Then conditionally render settings-dependent UI
+{isMounted && settings.caaEnabled && <Switch ... />}
+```
+
+**Why**: Server renders with default settings values, but client loads from localStorage (different values) causing hydration mismatch.
+
+### Image Caching for Realtime Sync
+
+The `loadImageElement` function caches HTMLImageElement objects by ID and URL:
+
+- **Cache key**: Image `id` (stable across operations on same object)
+- **Cache validation**: Checks if `cached.src === s3Url` before returning
+- **Why URL check**: Operations like crop, upscale, remove-background change the S3 URL while keeping same ID
+- **Behavior**: When User A crops an image, User B's cache detects URL change and reloads the new cropped version
+- **Applies to**: Crop, upscale, remove background, any operation that changes `s3Url` while preserving `id`
