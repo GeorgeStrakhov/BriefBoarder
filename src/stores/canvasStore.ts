@@ -83,12 +83,13 @@ export const getAllImageRefs = () => imageRefsMap;
 const imageElementsMap = new Map<string, HTMLImageElement>();
 
 const loadImageElement = (id: string, s3Url: string): Promise<HTMLImageElement> => {
-  // Return cached if available
-  if (imageElementsMap.has(id)) {
-    return Promise.resolve(imageElementsMap.get(id)!);
+  // Check if cached and URL matches (important for crops/edits that change the URL)
+  const cached = imageElementsMap.get(id);
+  if (cached && cached.src === s3Url) {
+    return Promise.resolve(cached);
   }
 
-  // Load and cache
+  // Load and cache (or reload if URL changed)
   return new Promise((resolve, reject) => {
     const img = new window.Image();
     img.crossOrigin = "anonymous";
