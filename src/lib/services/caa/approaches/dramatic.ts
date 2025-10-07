@@ -1,4 +1,4 @@
-import { CreativeApproach } from "./base";
+import { BaseCreativeApproach } from "./base";
 import { CAAContext, CAAResult } from "../types";
 import { LLMClient } from "../llm-client";
 
@@ -14,10 +14,22 @@ const DRAMATIC_TECHNIQUES = [
  * Bold B&W photography with cinematic lighting
  * Includes randomization for variety
  */
-export class DramaticApproach implements CreativeApproach {
+export class DramaticApproach extends BaseCreativeApproach {
   id = "dramatic";
   name = "Dramatic";
   description = "Bold B&W photography with cinematic lighting";
+
+  getImageStyleGuidance(): string {
+    const technique =
+      DRAMATIC_TECHNIQUES[
+        Math.floor(Math.random() * DRAMATIC_TECHNIQUES.length)
+      ];
+    return `bold black and white photography with dramatic lighting. Use: ${technique}`;
+  }
+
+  getCopyStyleGuidance(): string {
+    return "provocative, emotionally charged headline that stops the viewer and creates impact";
+  }
 
   async execute(context: CAAContext, llm: LLMClient): Promise<CAAResult> {
     // Random technique selection for variety

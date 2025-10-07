@@ -1,4 +1,4 @@
-import { CreativeApproach } from "./base";
+import { BaseCreativeApproach } from "./base";
 import { CAAContext, CAAResult } from "../types";
 import { LLMClient } from "../llm-client";
 
@@ -6,10 +6,18 @@ import { LLMClient } from "../llm-client";
  * Simple Creative Approach
  * Clean, accurate enhancement with minimal interpretation
  */
-export class SimpleApproach implements CreativeApproach {
+export class SimpleApproach extends BaseCreativeApproach {
   id = "simple";
   name = "Simple";
   description = "Clean, accurate enhancement with minimal interpretation";
+
+  getImageStyleGuidance(): string {
+    return "clean, straightforward photography with clear composition and natural lighting";
+  }
+
+  getCopyStyleGuidance(): string {
+    return "clear, accurate headline that communicates the core benefit without exaggeration";
+  }
 
   async execute(context: CAAContext, llm: LLMClient): Promise<CAAResult> {
     const systemPrompt = `You are using the SIMPLE approach:

@@ -1,14 +1,47 @@
 import OpenAI from "openai";
-import { CAAContext, caaResponseSchema } from "./types";
+import { CAAContext, caaResponseSchema, adConceptSchema } from "./types";
+import { z } from "zod";
 
 const openrouter = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function zodSchemaToJsonSchema(_schema: typeof caaResponseSchema): unknown {
-  // Simple conversion for our specific schema
+// Convert Zod schema to JSON schema for LLM
+function zodSchemaToJsonSchema(
+  schema: typeof caaResponseSchema | typeof adConceptSchema
+): unknown {
+  // Check if it's the ad concept schema by looking at the shape
+  const shape = (schema as any)._def?.shape?.();
+
+  if (shape?.textPlacement) {
+    // Ad concept schema
+    return {
+      type: "object",
+      properties: {
+        textPlacement: {
+          type: "string",
+          enum: ["overlay", "integrated", "none"],
+          description: "How text should be handled in the ad",
+        },
+        headline: {
+          type: "string",
+          description: "Headline text (required if textPlacement is 'overlay')",
+        },
+        imagePrompt: {
+          type: "string",
+          description: "Visual description for image generation",
+        },
+        reasoning: {
+          type: "string",
+          description: "Explanation of how this uses the advertising technique",
+        },
+      },
+      required: ["textPlacement", "imagePrompt", "reasoning"],
+    };
+  }
+
+  // CAA response schema
   return {
     type: "object",
     properties: {
@@ -38,17 +71,19 @@ export class LLMClient {
   /**
    * Call LLM with structured output
    */
-  async callWithStructuredOutput(options: {
+  async callWithStructuredOutput<T extends z.ZodTypeAny>(options: {
     systemPrompt: string;
     userPrompt: string;
     context: CAAContext;
-  }) {
+    schema?: T;
+  }): Promise<z.infer<T>> {
+    const schema = options.schema || (caaResponseSchema as T);
     const fullSystemPrompt = this.buildFullSystemPrompt(
       options.systemPrompt,
       options.context,
     );
 
-    const jsonSchema = zodSchemaToJsonSchema(caaResponseSchema);
+    const jsonSchema = zodSchemaToJsonSchema(schema as any);
     const enhancedSystemPrompt = `${fullSystemPrompt}
 
 IMPORTANT: You MUST return a valid JSON object that matches exactly this schema:
@@ -120,7 +155,7 @@ Return ONLY the JSON object, no markdown formatting, no backticks, no additional
         }
 
         const parsedJson = JSON.parse(content);
-        const validatedData = caaResponseSchema.parse(parsedJson);
+        const validatedData = schema.parse(parsedJson);
 
         return validatedData;
       } catch (error) {

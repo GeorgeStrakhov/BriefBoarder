@@ -70,3 +70,26 @@ export const caaResponseSchema = z.object({
     .string()
     .describe("Brief explanation of your decision and enhancements"),
 });
+
+// Zod schema for autonomous ad generation
+export const adConceptSchema = z.object({
+  textPlacement: z
+    .enum(["overlay", "integrated", "none"])
+    .describe(
+      "How text should be handled: 'overlay'=add text after image generation via nano-banana, 'integrated'=text is part of the generated image itself (e.g., written on napkin, neon sign), 'none'=no text needed",
+    ),
+  headline: z
+    .string()
+    .optional()
+    .describe(
+      "Headline text for the ad (required only if textPlacement is 'overlay'). Should be punchy and memorable. Leave empty for 'integrated' or 'none'.",
+    ),
+  imagePrompt: z
+    .string()
+    .describe(
+      "Detailed visual description for image generation. If textPlacement is 'integrated', describe how text appears in the image (e.g., 'neon sign saying X'). If 'overlay' or 'none', describe ONLY the visual scene without text.",
+    ),
+  reasoning: z
+    .string()
+    .describe("Brief explanation of how this concept uses the advertising technique"),
+});

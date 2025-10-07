@@ -69,6 +69,7 @@ interface EditingModelConfig {
     prompt: string,
     imageInputs: string[],
     outputFormat: string,
+    aspectRatio?: string,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ) => Record<string, any>;
 }
@@ -77,20 +78,20 @@ const IMAGE_EDITING_MODELS: Record<string, EditingModelConfig> = {
   "nano-banana": {
     replicateId: "google/nano-banana",
     maxImages: 8,
-    buildInput: (prompt, imageInputs, outputFormat) => ({
+    buildInput: (prompt, imageInputs, outputFormat, aspectRatio) => ({
       prompt,
       image_input: imageInputs,
-      aspect_ratio: "match_input_image" as const,
+      aspect_ratio: aspectRatio || "match_input_image",
       output_format: outputFormat,
     }),
   },
   "flux-kontext": {
     replicateId: "black-forest-labs/flux-kontext-pro",
     maxImages: 1,
-    buildInput: (prompt, imageInputs, outputFormat) => ({
+    buildInput: (prompt, imageInputs, outputFormat, aspectRatio) => ({
       prompt,
       input_image: imageInputs[0], // Only takes one image
-      aspect_ratio: "match_input_image" as const,
+      aspect_ratio: aspectRatio || "match_input_image",
       output_format: outputFormat,
       safety_tolerance: 2,
       prompt_upsampling: false,
@@ -103,6 +104,7 @@ export interface ImageEditingOptions {
   imageInputs: string[]; // Array of image URLs to edit
   model?: string; // Model name from registry
   outputFormat?: "jpg" | "png" | "webp";
+  aspectRatio?: "1:1" | "16:9" | "9:16" | "match_input_image"; // Aspect ratio for output
   folder?: string;
 }
 
@@ -193,6 +195,7 @@ export async function editImage(
     imageInputs,
     model = "nano-banana",
     outputFormat = "jpg",
+    aspectRatio,
     folder = "edited-images",
   } = options;
 
@@ -211,7 +214,13 @@ export async function editImage(
     }
 
     // Build input using model-specific builder
-    const input = modelConfig.buildInput(prompt, imageInputs, outputFormat);
+    const input = modelConfig.buildInput(prompt, imageInputs, outputFormat, aspectRatio);
+
+    console.log(`[editImage] Building input for ${model}:`, {
+      aspectRatio: aspectRatio || "match_input_image (default)",
+      outputFormat,
+      imageCount: imageInputs.length,
+    });
 
     // Run the model
     const output = await replicate.run(

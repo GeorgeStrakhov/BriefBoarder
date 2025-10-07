@@ -872,6 +872,157 @@ export default function Canvas({
 
   const selectedItemType = getSelectedItemType();
 
+  // Magic Ad Button Component
+  const MagicAdButton = () => {
+    const [isGenerating, setIsGenerating] = React.useState(false);
+
+    const handleGenerateAd = async () => {
+      setIsGenerating(true);
+      toast.loading("✨ Creating autonomous ad...", { id: "auto-ad" });
+
+      try {
+        // Get preferred typeface from user preferences
+        const preferredFont = preferences.lastTextFont || "var(--font-geist-sans)";
+
+        // Convert CSS var to actual font name for LLM
+        const getFontName = (fontVar: string): string => {
+          if (fontVar.includes("geist-sans")) return "Geist Sans";
+          if (fontVar.includes("inter")) return "Inter";
+          if (fontVar.includes("playfair")) return "Playfair Display";
+          if (fontVar.includes("bebas")) return "Bebas Neue";
+          if (fontVar.includes("caveat")) return "Caveat";
+          if (fontVar.includes("roboto-mono")) return "Roboto Mono";
+          if (fontVar.includes("orbitron")) return "Orbitron";
+          return "Geist Sans";
+        };
+
+        const response = await fetch("/api/generate-ad", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            briefName,
+            briefDescription,
+            approach: settings.caaApproach,
+            availableAssets: getAllAssets(),
+            preferredTypeface: getFontName(preferredFont),
+            aspectRatio: settings.defaultAspectRatio || "9:16", // Use user's selected aspect ratio
+            settings: {
+              imageGenerationModel: settings.imageGenerationModel,
+              imageEditingModel: settings.imageEditingModel,
+              caaModel: settings.caaModel,
+            },
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Load generated ad image
+          const img = new window.Image();
+          img.crossOrigin = "anonymous";
+          img.src = data.imageUrl;
+          img.onload = () => {
+            // Add to canvas at center
+            const centerX = dimensions.width / 2 / zoom - stagePosition.x / zoom;
+            const centerY = dimensions.height / 2 / zoom - stagePosition.y / zoom;
+
+            // FIXED: Use actual image dimensions, scale proportionally
+            // Don't assume aspect ratio - respect what the image generator created
+            const maxWidth = 400; // Max width on canvas
+            const aspectRatio = img.naturalWidth / img.naturalHeight;
+
+            let adWidth, adHeight;
+            if (aspectRatio > 1) {
+              // Landscape: constrain by width
+              adWidth = maxWidth;
+              adHeight = maxWidth / aspectRatio;
+            } else {
+              // Portrait or square: constrain by height to prevent super tall images
+              const maxHeight = 700;
+              adHeight = Math.min(maxWidth / aspectRatio, maxHeight);
+              adWidth = adHeight * aspectRatio;
+            }
+
+            console.log("Image natural dimensions:", img.naturalWidth, "x", img.naturalHeight);
+            console.log("Canvas dimensions:", adWidth, "x", adHeight);
+
+            addImage({
+              id: crypto.randomUUID(),
+              image: img,
+              width: adWidth,
+              height: adHeight,
+              x: centerX - adWidth / 2,
+              y: centerY - adHeight / 2,
+              rotation: 0,
+              scaleX: 1,
+              scaleY: 1,
+              sourceType: "generated",
+              s3Url: data.imageUrl,
+              s3Key: data.s3Key,
+              prompt: `Auto-generated ad using "${data.trick.name}" technique`,
+            });
+
+            const textInfo =
+              data.textPlacement === "none"
+                ? " (image only)"
+                : data.textPlacement === "integrated"
+                ? " (text integrated)"
+                : "";
+
+            toast.success(
+              `Ad created using "${data.trick.name}" technique!${textInfo}`
+            );
+          };
+        } else {
+          toast.error(data.error || "Failed to generate ad");
+        }
+      } catch (error) {
+        console.error("Auto ad error:", error);
+        toast.error("Failed to generate ad");
+      } finally {
+        setIsGenerating(false);
+        toast.dismiss("auto-ad");
+      }
+    };
+
+    return (
+      <button
+        onClick={handleGenerateAd}
+        disabled={isGenerating}
+        style={{
+          position: "absolute",
+          top: "16px",
+          left: "16px",
+          zIndex: 1000,
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          color: "white",
+          padding: "12px 20px",
+          borderRadius: "12px",
+          border: "none",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+          cursor: isGenerating ? "not-allowed" : "pointer",
+          opacity: isGenerating ? 0.5 : 1,
+          fontWeight: 600,
+          fontSize: "14px",
+          transition: "all 0.2s ease",
+        }}
+        onMouseEnter={(e) => {
+          if (!isGenerating) {
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.2)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+        }}
+        title="Generate autonomous ad from brief"
+      >
+        {isGenerating ? "✨ Creating..." : "✨ Magic Ad"}
+      </button>
+    );
+  };
+
   return (
     <div
       ref={containerRef}
@@ -884,6 +1035,9 @@ export default function Canvas({
         position: "relative",
       }}
     >
+      {/* Magic Ad Button */}
+      <MagicAdButton />
+
       {/* Top right controls */}
       <CanvasControls
         isLeader={isLeader}
