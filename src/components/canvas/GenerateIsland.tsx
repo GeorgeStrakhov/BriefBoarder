@@ -132,7 +132,7 @@ export default function GenerateIsland({
           }}
         />
         <Button
-          onClick={onGenerate}
+          onClick={() => onGenerate()}
           disabled={!prompt.trim()}
           size="icon"
           className="h-[80px] w-[80px] flex-shrink-0"
