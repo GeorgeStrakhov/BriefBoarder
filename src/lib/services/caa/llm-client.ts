@@ -11,10 +11,8 @@ const openrouter = new OpenAI({
 function zodSchemaToJsonSchema(
   schema: typeof caaResponseSchema | typeof adConceptSchema
 ): unknown {
-  // Check if it's the ad concept schema by looking at the shape
-  const shape = (schema as any)._def?.shape?.();
-
-  if (shape?.textPlacement) {
+  // Check if it's the ad concept schema by checking the schema reference
+  if (schema === adConceptSchema) {
     // Ad concept schema
     return {
       type: "object",

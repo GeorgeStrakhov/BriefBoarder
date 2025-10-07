@@ -116,25 +116,6 @@ export async function generateAd(
     size: backgroundImage.size,
   });
 
-  // Validate background image aspect ratio
-  await new Promise<void>((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      console.log("\n[Step 5] Background image dimensions:", {
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-        aspectRatio: (img.naturalWidth / img.naturalHeight).toFixed(3),
-        expectedAspectRatio: "0.563 (9:16)",
-      });
-      resolve();
-    };
-    img.onerror = () => {
-      console.error("Failed to load background image for validation");
-      resolve();
-    };
-    img.src = backgroundImage.imageUrl;
-  });
-
   // 6. Determine if we need compositing
   // If textPlacement is "integrated" or "none", we're done - just return the background
   console.log("\n[Step 6] Checking if compositing needed...");
@@ -227,25 +208,6 @@ ${concept.headline ? "- Place headline prominently with excellent legibility and
     imageUrl: finalAd.imageUrl,
     s3Key: finalAd.key,
     size: finalAd.size,
-  });
-
-  // Validate aspect ratio by loading the image
-  await new Promise<void>((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      console.log("\n[Step 7] Final ad image dimensions:", {
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-        aspectRatio: (img.naturalWidth / img.naturalHeight).toFixed(3),
-        expectedAspectRatio: "0.563 (9:16)",
-      });
-      resolve();
-    };
-    img.onerror = () => {
-      console.error("Failed to load final ad image for validation");
-      resolve();
-    };
-    img.src = finalAd.imageUrl;
   });
 
   console.log("\n=== AUTO AD GENERATION COMPLETE ===\n");
