@@ -65,10 +65,15 @@ The Creative Assistant enhances user prompts with creative interpretation and in
   - Uses `response_format: { type: "json_object" }` for guaranteed JSON responses
   - Zod schema validation with retry logic (3 attempts, exponential backoff)
   - Multimodal support: passes selected images via `image_url` objects using `transformedUrl` (1024px versions)
-- **Types & Schemas** (`types.ts`): Defines `CAAContext`, `CAAResult`, and Zod response schema
-- **Approaches** (`approaches/`): Different creative styles
+  - Supports multiple schemas: `caaResponseSchema` for prompt enhancement, `adConceptSchema` for autonomous ad generation
+- **Types & Schemas** (`types.ts`): Defines `CAAContext`, `CAAResult`, `AdGenerationContext`, and Zod schemas
+- **Approaches** (`approaches/`): Different creative styles that apply to both manual and autonomous modes
   - **Simple**: Clean, accurate enhancement with minimal interpretation
   - **Dramatic**: Bold B&W photography with cinematic lighting and randomized techniques
+  - **Bernbach**: Vintage 1960s aesthetic inspired by Bill Bernbach's legendary DDB work - witty, honest copy with simple iconic imagery
+- **Advertising Tricks** (`advertising-tricks.ts`): 16 classic advertising techniques for autonomous ad generation
+  - Techniques include: Problem/Solution, Before/After, Testimonial, Demonstration, Comparison, Scarcity, Social Proof, Emotional Appeal, Humor, Exaggeration, Reverse Psychology, Storytelling, Challenge, Question, Benefit Focus, Lifestyle
+  - Each trick includes description, when to use, examples, and optional inspiration references
 
 **Actions**:
 
@@ -76,6 +81,21 @@ The Creative Assistant enhances user prompts with creative interpretation and in
 - `edit` - Modify existing selected images
 - `answer` - Provide informational responses without image generation
 - `generate_and_note` - Generate image + create reference post-it note
+
+**Autonomous Ad Generation**:
+
+The Magic Ad button (`src/lib/services/ad-generator/`) generates complete ad compositions autonomously:
+- Selects random advertising trick from 16 classic techniques
+- Uses selected creative approach (simple/dramatic/bernbach) for consistent styling
+- Generates concept via approach's `generateAutonomousAd()` method
+- Creates background image via selected generation model
+- Optionally composites with nano-banana for text overlay and logo
+- Text placement strategies:
+  - `overlay`: Text added after image generation (requires nano-banana compositing)
+  - `integrated`: Text is part of the generated image (e.g., "written on napkin", "billboard")
+  - `none`: Pure visual storytelling without text
+- Default aspect ratio: 9:16 (mobile-first)
+- Logo included from preset assets when available
 
 **Key Patterns**:
 
@@ -89,9 +109,10 @@ The Creative Assistant enhances user prompts with creative interpretation and in
 **Settings**:
 
 - Stored in localStorage (per-user, not synced via Liveblocks)
-- Toggle on/off, select approach (simple/dramatic), choose LLM model
+- Toggle on/off, select approach (simple/dramatic/bernbach), choose LLM model
 - Default model: GPT-4.1 Mini (also supports Claude Sonnet 4)
 - Settings persist across sessions but remain personal to each user
+- Magic Ad button only visible when Creative Assistant is enabled
 
 **Image Generation (`src/lib/services/replicate/replicate.ts`)**:
 
@@ -127,6 +148,8 @@ The Creative Assistant enhances user prompts with creative interpretation and in
 - `/api/edit` - POST: Edit existing images with AI (multi-image support)
 - `/api/upscale` - POST: Upscale images using AI models
 - `/api/caa` - POST: Creative Assistant Agent endpoint, enhances prompts and determines actions
+- `/api/generate-ad` - POST: Autonomous ad generation using advertising tricks and creative approaches
+- `/api/enhance-brief` - POST: AI-powered brief enhancement using Claude Sonnet 4.5
 - `/api/briefs` - GET/POST: List and create briefs
 - `/api/briefs/[uuid]` - GET/PATCH: Load and update brief canvas state
 - `/api/upload` - POST: Upload images from client to S3
@@ -143,6 +166,7 @@ The Creative Assistant enhances user prompts with creative interpretation and in
 - Auto-save debounced to 2 seconds
 - Prompt island with Creative Assistant indicator (shows active style when enabled)
 - Selection indicator (shows selected image count and editing model)
+- Magic Ad button (top-left, visible when Creative Assistant enabled) - generates complete ad compositions autonomously
 
 **CropDialog.tsx**: Image cropping using `react-image-crop` library
 

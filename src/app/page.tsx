@@ -136,7 +136,7 @@ export default function Home() {
                 <div className="flex-1">
                   <CardTitle>{brief.name}</CardTitle>
                   {brief.description && (
-                    <CardDescription className="mt-1.5">
+                    <CardDescription className="mt-1.5 line-clamp-3">
                       {brief.description}
                     </CardDescription>
                   )}

@@ -23,7 +23,7 @@ export default function UndoRedoControls({
         display: "flex",
         flexDirection: "row",
         gap: "8px",
-        zIndex: 1000,
+        zIndex: 40,
       }}
     >
       <Button

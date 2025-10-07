@@ -993,7 +993,7 @@ export default function Canvas({
           position: "absolute",
           top: "16px",
           left: "16px",
-          zIndex: 1000,
+          zIndex: 40,
           background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
           color: "white",
           padding: "12px 20px",
@@ -1018,7 +1018,7 @@ export default function Canvas({
         }}
         title="Generate autonomous ad from brief"
       >
-        {isGenerating ? "✨ Creating..." : "✨ Magic Ad"}
+        {isGenerating ? "✨ Creating..." : "✨ Magic"}
       </button>
     );
   };
@@ -1035,8 +1035,8 @@ export default function Canvas({
         position: "relative",
       }}
     >
-      {/* Magic Ad Button */}
-      <MagicAdButton />
+      {/* Magic Ad Button - only show when Creative Assistant is enabled */}
+      {isMounted && settings.caaEnabled && <MagicAdButton />}
 
       {/* Top right controls */}
       <CanvasControls

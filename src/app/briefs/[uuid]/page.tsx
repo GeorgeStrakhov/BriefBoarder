@@ -9,11 +9,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Pencil,
-  X,
-  Check,
   Home,
   Upload,
   Trash2,
+  Sparkles,
+  Undo2,
+  Loader2,
 } from "lucide-react";
 import { useCanvasStore } from "@/stores/canvasStore";
 import Canvas from "@/components/canvas/Canvas";
@@ -25,6 +26,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function BriefCanvas({
   params,
@@ -52,10 +62,13 @@ export default function BriefCanvas({
   // Get Liveblocks state
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const liveblocks = useCanvasStore((state: any) => state.liveblocks);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingName, setEditingName] = useState("");
   const [editingDescription, setEditingDescription] = useState("");
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [originalName, setOriginalName] = useState(""); // For undo
+  const [originalDescription, setOriginalDescription] = useState(""); // For undo
+  const [isAIEnhanced, setIsAIEnhanced] = useState(false); // Track if AI was used
+  const [isEnhancing, setIsEnhancing] = useState(false); // Loading state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [uploadingAsset, setUploadingAsset] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -121,34 +134,66 @@ export default function BriefCanvas({
     return () => clearInterval(interval);
   }, [saveToDatabase, liveblocks]);
 
-  const handleEditName = () => {
+  const handleOpenEditDialog = () => {
     setEditingName(briefName);
-    setIsEditingName(true);
-  };
-
-  const handleSaveName = () => {
-    setBriefName(editingName);
-    setIsEditingName(false);
-  };
-
-  const handleCancelName = () => {
-    setEditingName("");
-    setIsEditingName(false);
-  };
-
-  const handleEditDescription = () => {
     setEditingDescription(briefDescription);
-    setIsEditingDescription(true);
+    setIsEditDialogOpen(true);
   };
 
-  const handleSaveDescription = () => {
+  const handleSaveEdit = () => {
+    setBriefName(editingName);
     setBriefDescription(editingDescription);
-    setIsEditingDescription(false);
+    setIsEditDialogOpen(false);
   };
 
-  const handleCancelDescription = () => {
+  const handleCancelEdit = () => {
+    setEditingName("");
     setEditingDescription("");
-    setIsEditingDescription(false);
+    setIsAIEnhanced(false);
+    setOriginalName("");
+    setOriginalDescription("");
+    setIsEditDialogOpen(false);
+  };
+
+  const handleEnhanceBrief = async () => {
+    // Store original values for undo
+    setOriginalName(editingName);
+    setOriginalDescription(editingDescription);
+    setIsEnhancing(true);
+
+    try {
+      const response = await fetch("/api/enhance-brief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          briefName: editingName,
+          briefDescription: editingDescription,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setEditingName(data.enhancedName);
+        setEditingDescription(data.enhancedDescription);
+        setIsAIEnhanced(true);
+        toast.success("Brief enhanced by AI");
+      } else {
+        toast.error(data.error || "Failed to enhance brief");
+      }
+    } catch (error) {
+      console.error("Enhance brief error:", error);
+      toast.error("Failed to enhance brief");
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
+  const handleUndoEnhance = () => {
+    setEditingName(originalName);
+    setEditingDescription(originalDescription);
+    setIsAIEnhanced(false);
+    toast.success("Reverted to original");
   };
 
   const handleSettingChange = async (key: string, value: string | boolean) => {
@@ -254,108 +299,183 @@ export default function BriefCanvas({
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto p-4">
-            {/* Name field */}
+            {/* Brief Info with Edit Dialog */}
             <div>
-              <label className="mb-2 block text-xs font-medium text-gray-700">
-                Name
-              </label>
-              {isEditingName ? (
-                <div className="space-y-2">
-                  <Input
-                    value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
-                    placeholder="Brief name"
-                    autoFocus
-                  />
-                  <div className="flex gap-2">
+              <div className="mb-2 flex items-center justify-between">
+                <label className="text-xs font-medium text-gray-700">
+                  Brief
+                </label>
+                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                  <DialogTrigger asChild>
                     <Button
+                      variant="ghost"
                       size="sm"
-                      onClick={handleSaveName}
-                      className="flex-1"
+                      onClick={handleOpenEditDialog}
+                      className="h-7 px-2"
                     >
-                      <Check className="mr-1 h-4 w-4" />
-                      Save
+                      <Pencil className="h-3 w-3 mr-1" />
+                      Edit
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleCancelName}
-                      className="flex-1"
-                    >
-                      <X className="mr-1 h-4 w-4" />
-                      Cancel
-                    </Button>
-                  </div>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[700px]">
+                    <DialogHeader>
+                      <DialogTitle>Edit Brief</DialogTitle>
+                      <DialogDescription>
+                        Update your brief name and details
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-6 py-4">
+                      <div className="space-y-3">
+                        <label className="text-sm font-medium">Name</label>
+                        <Input
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          placeholder="Brief name"
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <label className="text-sm font-medium">Details</label>
+                        <Textarea
+                          value={editingDescription}
+                          onChange={(e) => setEditingDescription(e.target.value)}
+                          placeholder="Brief details"
+                          rows={12}
+                          className="resize-none"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter className="flex items-center justify-between">
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={handleEnhanceBrief}
+                          disabled={isEnhancing}
+                        >
+                          {isEnhancing ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="mr-2 h-4 w-4" />
+                          )}
+                          {isEnhancing ? "Enhancing..." : "AI Enhance"}
+                        </Button>
+                        {isAIEnhanced && (
+                          <Button
+                            variant="outline"
+                            onClick={handleUndoEnhance}
+                            disabled={isEnhancing}
+                          >
+                            <Undo2 className="mr-2 h-4 w-4" />
+                            Undo
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={handleCancelEdit}
+                        >
+                          Cancel
+                        </Button>
+                        <Button onClick={handleSaveEdit}>
+                          Save Changes
+                        </Button>
+                      </div>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                <div className="mb-2">
+                  <p className="text-sm font-medium text-gray-900">
+                    {briefName || "Untitled Brief"}
+                  </p>
                 </div>
-              ) : (
-                <div
-                  className="group flex cursor-pointer items-center justify-between rounded-md px-3 py-2 hover:bg-gray-50"
-                  onClick={handleEditName}
-                >
-                  <span className="text-sm">
-                    {briefName || "Click to add name"}
-                  </span>
-                  <Pencil className="h-3 w-3 text-gray-400 opacity-0 group-hover:opacity-100" />
-                </div>
-              )}
+                {briefDescription && (
+                  <p className="text-xs text-gray-600 line-clamp-3">
+                    {briefDescription}
+                  </p>
+                )}
+              </div>
             </div>
 
-            {/* Details field */}
-            <div>
-              <label className="mb-2 block text-xs font-medium text-gray-700">
-                Details
-              </label>
-              {isEditingDescription ? (
-                <div className="space-y-2">
-                  <Textarea
-                    value={editingDescription}
-                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                      setEditingDescription(e.target.value)
-                    }
-                    placeholder="Brief details"
-                    rows={4}
-                    autoFocus
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleSaveDescription}
-                      className="flex-1"
-                    >
-                      <Check className="mr-1 h-4 w-4" />
-                      Save
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleCancelDescription}
-                      className="flex-1"
-                    >
-                      <X className="mr-1 h-4 w-4" />
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  className="group max-h-[200px] cursor-pointer overflow-y-auto rounded-md px-3 py-2 hover:bg-gray-50"
-                  onClick={handleEditDescription}
-                >
-                  <div className="flex items-start justify-between">
-                    <p className="flex-1 text-sm whitespace-pre-wrap text-gray-700">
-                      {briefDescription || "Click to add details"}
-                    </p>
-                    <Pencil className="ml-2 h-3 w-3 flex-shrink-0 text-gray-400 opacity-0 group-hover:opacity-100" />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Settings */}
+            {/* Creative Assistant */}
             <div className="mt-4 border-t border-gray-200 pt-4">
               <details open>
                 <summary className="mb-3 cursor-pointer text-sm font-medium text-gray-700">
-                  Settings
+                  Creative Assistant
+                </summary>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-gray-700">
+                      Enable Creative Assistant
+                    </label>
+                    {isMounted && (
+                      <Switch
+                        checked={settings.caaEnabled}
+                        onCheckedChange={(checked) =>
+                          handleSettingChange("caaEnabled", checked)
+                        }
+                      />
+                    )}
+                  </div>
+
+                  {isMounted && settings.caaEnabled && (
+                    <>
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-gray-500">
+                          Style
+                        </label>
+                        <Select
+                          value={settings.caaApproach}
+                          onValueChange={(value) =>
+                            handleSettingChange("caaApproach", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="simple">Simple</SelectItem>
+                            <SelectItem value="dramatic">Dramatic</SelectItem>
+                            <SelectItem value="bernbach">Bernbach</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-xs font-medium text-gray-500">
+                          LLM
+                        </label>
+                        <Select
+                          value={settings.caaModel}
+                          onValueChange={(value) =>
+                            handleSettingChange("caaModel", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="anthropic/claude-sonnet-4">
+                              Claude Sonnet 4
+                            </SelectItem>
+                            <SelectItem value="openai/gpt-4.1-mini">
+                              GPT-4.1 Mini
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </details>
+            </div>
+
+            {/* Image Generation */}
+            <div className="mt-4 border-t border-gray-200 pt-4">
+              <details open>
+                <summary className="mb-3 cursor-pointer text-sm font-medium text-gray-700">
+                  Image Generation
                 </summary>
                 <div className="space-y-2">
                   <div>
@@ -451,78 +571,6 @@ export default function BriefCanvas({
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-              </details>
-            </div>
-
-            {/* Creative Assistant */}
-            <div className="mt-4 border-t border-gray-200 pt-4">
-              <details open>
-                <summary className="mb-3 cursor-pointer text-sm font-medium text-gray-700">
-                  Creative Assistant
-                </summary>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-gray-700">
-                      Enable Creative Assistant
-                    </label>
-                    {isMounted && (
-                      <Switch
-                        checked={settings.caaEnabled}
-                        onCheckedChange={(checked) =>
-                          handleSettingChange("caaEnabled", checked)
-                        }
-                      />
-                    )}
-                  </div>
-
-                  {isMounted && settings.caaEnabled && (
-                    <>
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-gray-500">
-                          Style
-                        </label>
-                        <Select
-                          value={settings.caaApproach}
-                          onValueChange={(value) =>
-                            handleSettingChange("caaApproach", value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="simple">Simple</SelectItem>
-                            <SelectItem value="dramatic">Dramatic</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-xs font-medium text-gray-500">
-                          LLM
-                        </label>
-                        <Select
-                          value={settings.caaModel}
-                          onValueChange={(value) =>
-                            handleSettingChange("caaModel", value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="anthropic/claude-sonnet-4">
-                              Claude Sonnet 4
-                            </SelectItem>
-                            <SelectItem value="openai/gpt-4.1-mini">
-                              GPT-4.1 Mini
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </>
-                  )}
                 </div>
               </details>
             </div>

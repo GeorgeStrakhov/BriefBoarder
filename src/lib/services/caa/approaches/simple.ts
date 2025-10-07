@@ -5,6 +5,7 @@ import { LLMClient } from "../llm-client";
 /**
  * Simple Creative Approach
  * Clean, accurate enhancement with minimal interpretation
+ * Focus: Professional quality with modern aesthetics
  */
 export class SimpleApproach extends BaseCreativeApproach {
   id = "simple";
@@ -12,19 +13,34 @@ export class SimpleApproach extends BaseCreativeApproach {
   description = "Clean, accurate enhancement with minimal interpretation";
 
   getImageStyleGuidance(): string {
-    return "clean, straightforward photography with clear composition and natural lighting";
+    return "clean, professional photography with excellent composition and lighting. Modern aesthetic inspired by Swiss design principles - clarity, simplicity, good use of negative space. Well-lit, sharp focus, uncluttered backgrounds. Quality over complexity.";
   }
 
   getCopyStyleGuidance(): string {
-    return "clear, accurate headline that communicates the core benefit without exaggeration";
+    return "clear, benefit-focused headline with strong hierarchy and readability. Communicate value directly without exaggeration or unnecessary cleverness. Professional and trustworthy tone.";
   }
 
   async execute(context: CAAContext, llm: LLMClient): Promise<CAAResult> {
     const systemPrompt = `You are using the SIMPLE approach:
-- Enhance prompts for clarity and technical accuracy
-- Stay true to the user's intent
-- Add specific details about composition, lighting, and style
-- Keep it straightforward - no dramatic reinterpretation
+
+VISUAL STYLE:
+- Clean, professional photography with excellent composition
+- Modern aesthetic inspired by Swiss design - clarity, simplicity, negative space
+- Well-lit with natural or studio lighting - sharp focus, uncluttered backgrounds
+- Quality over complexity - let the subject breathe
+- Reference: Apple product photography, modern editorial style, minimalist design
+
+COPY STYLE:
+- Clear, benefit-focused headlines with strong hierarchy
+- Communicate value directly - no hype or exaggeration
+- Professional and trustworthy tone
+- Readable and accessible - clarity is key
+
+APPROACH PRINCIPLES:
+- Stay true to the user's intent - enhance, don't reinterpret
+- Add specific details about composition, lighting, quality
+- Keep it straightforward and professional
+- Focus on making good design choices, not being clever
 
 IMPORTANT FOR IMAGE EDITING:
 When user has images selected and wants to EDIT them:

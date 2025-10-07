@@ -1,6 +1,7 @@
 import { CreativeApproach } from "./base";
 import { SimpleApproach } from "./simple";
 import { DramaticApproach } from "./dramatic";
+import { BernbachApproach } from "./bernbach";
 
 /**
  * Approach Registry
@@ -10,6 +11,7 @@ import { DramaticApproach } from "./dramatic";
 const APPROACHES: Record<string, CreativeApproach> = {
   simple: new SimpleApproach(),
   dramatic: new DramaticApproach(),
+  bernbach: new BernbachApproach(),
   // Future approaches can be added here:
   // "layout-first": new LayoutFirstApproach(),
   // "random-technique": new RandomTechniqueApproach(),

@@ -86,7 +86,7 @@ export default function GenerateIsland({
         borderRadius: "12px",
         padding: "16px",
         boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-        zIndex: 1000,
+        zIndex: 40,
         maxWidth: "600px",
         width: "calc(100% - 40px)",
       }}

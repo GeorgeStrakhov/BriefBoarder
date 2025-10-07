@@ -21,12 +21,12 @@ export interface ImageTransformOptions {
  * @returns Transformed URL with Cloudflare image transformations applied
  *
  * @example
- * transformImageUrl("https://cdn.stikk.ai/avatars/image.png", {
+ * transformImageUrl("https://cdn.yourdomain.com/avatars/image.png", {
  *   width: 1080,
  *   height: 1920,
  *   fit: "cover"
  * })
- * // Returns: "https://cdn.stikk.ai/cdn-cgi/image/width=1080,height=1920,fit=cover/avatars/image.png"
+ * // Returns: "https://cdn.yourdomain.com/cdn-cgi/image/width=1080,height=1920,fit=cover/avatars/image.png"
  */
 export function transformImageUrl(
   url: string,

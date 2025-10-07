@@ -243,7 +243,7 @@ const clearHistory = () => {
   historyStep = -1;
 };
 
-export type CAAApproachId = "simple" | "dramatic";
+export type CAAApproachId = "simple" | "dramatic" | "bernbach";
 
 export interface BriefSettings {
   imageGenerationModel: string;

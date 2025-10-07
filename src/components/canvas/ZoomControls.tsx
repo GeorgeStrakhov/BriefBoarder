@@ -24,7 +24,7 @@ export default function ZoomControls({
         flexDirection: "column",
         alignItems: "flex-end",
         gap: "8px",
-        zIndex: 1000,
+        zIndex: 40,
       }}
     >
       <Button

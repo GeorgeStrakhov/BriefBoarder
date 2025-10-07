@@ -1,1 +1,2 @@
-- add magic button top left: just generates an advert based on the style and brief
+- add more CAA approaches
+- add ability to animate / make videos
