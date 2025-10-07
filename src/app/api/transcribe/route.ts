@@ -27,8 +27,7 @@ export async function POST(request: NextRequest) {
     console.error("Transcription error:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "Transcription failed",
+        error: error instanceof Error ? error.message : "Transcription failed",
       },
       { status: 500 },
     );

@@ -1,5 +1,5 @@
 import { BaseCreativeApproach } from "./base";
-import { CAAContext, CAAResult } from "../types";
+import { CAAContext, CAAResult, CAAResponseType } from "../types";
 import { LLMClient } from "../llm-client";
 
 const BERNBACH_VISUAL_STYLES = [
@@ -73,11 +73,11 @@ If user asks to add specific text/copy to an image:
 - Example: noteText: "Think Small", enhancedPrompt: "add simple bold text saying 'Think Small' in clean Helvetica typeface, centered at bottom with generous white space"
 - The post-it serves as a reference for the text content, while the image shows it visually`;
 
-    const llmResponse = await llm.callWithStructuredOutput({
+    const llmResponse = (await llm.callWithStructuredOutput({
       systemPrompt,
       userPrompt: context.userPrompt,
       context,
-    });
+    })) as CAAResponseType;
 
     // Transform LLM response into CAAResult
     const result: CAAResult = {

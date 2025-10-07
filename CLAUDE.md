@@ -85,6 +85,7 @@ The Creative Assistant enhances user prompts with creative interpretation and in
 **Autonomous Ad Generation**:
 
 The Magic Ad button (`src/lib/services/ad-generator/`) generates complete ad compositions autonomously:
+
 - Selects random advertising trick from 16 classic techniques
 - Uses selected creative approach (simple/dramatic/bernbach) for consistent styling
 - Generates concept via approach's `generateAutonomousAd()` method

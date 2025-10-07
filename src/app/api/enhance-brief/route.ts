@@ -8,13 +8,13 @@ export async function POST(req: NextRequest) {
     if (!briefName && !briefDescription) {
       return NextResponse.json(
         { error: "Brief name or description is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const systemPrompt = `You are a creative director and strategist helping to refine advertising briefs.
 
-Your task is to enhance the brief by:
+Your task is to enhance the brief description by:
 - Making it more comprehensive and actionable
 - Adding strategic insights and creative direction
 - Clarifying the core message and objectives
@@ -31,15 +31,10 @@ If the original brief is very short, expand it thoughtfully. If it's already det
 
     const userPrompt = `Brief Name: ${briefName || "Untitled"}
 
-Current Details:
+Current Description:
 ${briefDescription || "No description provided"}
 
-Enhance this brief by making it more solid, comprehensive, and creatively inspiring. Return your response in this exact format:
-
-ENHANCED NAME: [improved brief name - keep it concise and punchy]
-
-ENHANCED DETAILS:
-[enhanced brief description - 2-4 paragraphs covering the strategic and creative direction]`;
+Enhance this brief description by making it more solid, comprehensive, and creatively inspiring. Return ONLY the enhanced description - no additional formatting or labels.`;
 
     console.log("[Enhance Brief] Calling LLM with:", {
       briefName,
@@ -54,27 +49,21 @@ ENHANCED DETAILS:
       maxTokens: 2000,
     });
 
-    console.log("[Enhance Brief] Raw LLM response:", response.substring(0, 200) + "...");
+    console.log(
+      "[Enhance Brief] Raw LLM response:",
+      response.substring(0, 200) + "...",
+    );
 
-    // Parse the response to extract name and details
-    const nameMatch = response.match(/ENHANCED NAME:\s*(.+?)(?:\n|$)/i);
-    const detailsMatch = response.match(/ENHANCED DETAILS:\s*(.+)/is);
+    // Keep original name unchanged, only enhance description
+    const enhancedDescription = response.trim();
 
-    const enhancedName = nameMatch
-      ? nameMatch[1].trim()
-      : briefName || "Untitled Brief";
-
-    const enhancedDescription = detailsMatch
-      ? detailsMatch[1].trim()
-      : response.trim(); // Fallback to full response if parsing fails
-
-    console.log("[Enhance Brief] Parsed:", {
-      enhancedName,
+    console.log("[Enhance Brief] Enhanced:", {
+      originalName: briefName,
       enhancedDescriptionLength: enhancedDescription.length,
     });
 
     return NextResponse.json({
-      enhancedName,
+      enhancedName: briefName, // Keep original name unchanged
       enhancedDescription,
     });
   } catch (error) {
@@ -84,7 +73,7 @@ ENHANCED DETAILS:
         error:
           error instanceof Error ? error.message : "Failed to enhance brief",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

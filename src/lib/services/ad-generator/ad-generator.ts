@@ -1,10 +1,7 @@
 import { getRandomTrick } from "@/lib/services/caa/approaches/advertising-tricks";
 import { getApproach } from "@/lib/services/caa/approaches/registry";
 import { LLMClient } from "@/lib/services/caa/llm-client";
-import {
-  generateImage,
-  editImage,
-} from "@/lib/services/replicate/replicate";
+import { generateImage, editImage } from "@/lib/services/replicate/replicate";
 import { Asset } from "@/config/assets";
 import { transformImageUrl } from "@/lib/utils/image-transform";
 
@@ -35,7 +32,7 @@ export interface GeneratedAd {
 }
 
 export async function generateAd(
-  options: GenerateAdOptions
+  options: GenerateAdOptions,
 ): Promise<GeneratedAd> {
   console.log("\n=== AUTO AD GENERATION START ===");
   console.log("Options:", {
@@ -68,7 +65,10 @@ export async function generateAd(
 
   // 3. Create LLM client
   const llm = new LLMClient(options.settings.caaModel);
-  console.log("\n[Step 3] LLM client created with model:", options.settings.caaModel);
+  console.log(
+    "\n[Step 3] LLM client created with model:",
+    options.settings.caaModel,
+  );
 
   // 4. Generate ad concept via approach
   console.log("\n[Step 4] Generating ad concept...");
@@ -86,7 +86,7 @@ export async function generateAd(
         model: options.settings.caaModel,
       },
     },
-    llm
+    llm,
   );
   console.log("\n[Step 4] Ad concept generated:", {
     headline: concept.headline,

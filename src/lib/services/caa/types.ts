@@ -71,6 +71,8 @@ export const caaResponseSchema = z.object({
     .describe("Brief explanation of your decision and enhancements"),
 });
 
+export type CAAResponseType = z.infer<typeof caaResponseSchema>;
+
 // Zod schema for autonomous ad generation
 export const adConceptSchema = z.object({
   textPlacement: z
@@ -91,5 +93,7 @@ export const adConceptSchema = z.object({
     ),
   reasoning: z
     .string()
-    .describe("Brief explanation of how this concept uses the advertising technique"),
+    .describe(
+      "Brief explanation of how this concept uses the advertising technique",
+    ),
 });

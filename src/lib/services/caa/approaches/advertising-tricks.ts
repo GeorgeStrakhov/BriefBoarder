@@ -116,7 +116,8 @@ export const ADVERTISING_TRICKS: AdvertisingTrick[] = [
       "'Down with pointless meetings' - productivity tool",
       "'End tyranny of printer jams' - tech company",
     ],
-    inspiration: "Old Spice: The Man Your Man Could Smell Like (vs boring guys)",
+    inspiration:
+      "Old Spice: The Man Your Man Could Smell Like (vs boring guys)",
   },
   {
     id: "impossible-demonstration",
@@ -168,7 +169,8 @@ export const ADVERTISING_TRICKS: AdvertisingTrick[] = [
       "100 ways to show roundness if that's your thing",
       "The color blue in 10,000 variations",
     ],
-    inspiration: "iPod: '1,000 songs in your pocket' (only metric that mattered)",
+    inspiration:
+      "iPod: '1,000 songs in your pocket' (only metric that mattered)",
   },
   {
     id: "corporate-sabotage",
@@ -181,7 +183,8 @@ export const ADVERTISING_TRICKS: AdvertisingTrick[] = [
       "'Yes, we paid an influencer to say this'",
       "'Skip this ad in 5... actually please don't'",
     ],
-    inspiration: "Geico: 'We could save you 15% in 15 minutes' (self-aware simplicity)",
+    inspiration:
+      "Geico: 'We could save you 15% in 15 minutes' (self-aware simplicity)",
   },
   {
     id: "prophetic-nostalgia",
@@ -228,7 +231,9 @@ export const ADVERTISING_TRICKS: AdvertisingTrick[] = [
  * Get random trick for variety
  */
 export function getRandomTrick(): AdvertisingTrick {
-  return ADVERTISING_TRICKS[Math.floor(Math.random() * ADVERTISING_TRICKS.length)];
+  return ADVERTISING_TRICKS[
+    Math.floor(Math.random() * ADVERTISING_TRICKS.length)
+  ];
 }
 
 /**

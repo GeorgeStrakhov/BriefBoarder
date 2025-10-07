@@ -71,7 +71,9 @@ export function useVoiceRecording({
         // Check minimum duration (500ms)
         if (duration < 500) {
           setState("error");
-          onError?.("Recording too short. Please speak for at least half a second.");
+          onError?.(
+            "Recording too short. Please speak for at least half a second.",
+          );
           setTimeout(() => setState("idle"), 2000);
           return;
         }
@@ -111,7 +113,7 @@ export function useVoiceRecording({
       mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
       setState("recording");
-    } catch (err) {
+    } catch {
       setState("error");
       onError?.("Failed to start recording");
       setTimeout(() => setState("idle"), 2000);

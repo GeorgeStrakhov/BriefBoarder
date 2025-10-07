@@ -67,7 +67,7 @@ export default function GenerateIsland({
       case "transcribing":
         return <Loader2 className="h-5 w-5 animate-spin" />;
       case "recording":
-        return <Mic className="h-5 w-5 text-red-600 animate-pulse" />;
+        return <Mic className="h-5 w-5 animate-pulse text-red-600" />;
       case "error":
         return <Mic className="h-5 w-5 text-red-500" />;
       default:
@@ -110,7 +110,9 @@ export default function GenerateIsland({
           onMouseLeave={handleMouseUp}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          disabled={state === "requesting-permission" || state === "transcribing"}
+          disabled={
+            state === "requesting-permission" || state === "transcribing"
+          }
           size="icon"
           variant="outline"
           className="h-[80px] w-[80px] flex-shrink-0"

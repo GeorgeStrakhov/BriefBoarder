@@ -214,7 +214,12 @@ export async function editImage(
     }
 
     // Build input using model-specific builder
-    const input = modelConfig.buildInput(prompt, imageInputs, outputFormat, aspectRatio);
+    const input = modelConfig.buildInput(
+      prompt,
+      imageInputs,
+      outputFormat,
+      aspectRatio,
+    );
 
     console.log(`[editImage] Building input for ${model}:`, {
       aspectRatio: aspectRatio || "match_input_image (default)",

@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
     if (!options.briefName || !options.approach) {
       return NextResponse.json(
         { error: "briefName and approach are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       {
         error: error instanceof Error ? error.message : "Ad generation failed",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

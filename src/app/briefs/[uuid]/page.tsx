@@ -305,7 +305,10 @@ export default function BriefCanvas({
                 <label className="text-xs font-medium text-gray-700">
                   Brief
                 </label>
-                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <Dialog
+                  open={isEditDialogOpen}
+                  onOpenChange={setIsEditDialogOpen}
+                >
                   <DialogTrigger asChild>
                     <Button
                       variant="ghost"
@@ -313,7 +316,7 @@ export default function BriefCanvas({
                       onClick={handleOpenEditDialog}
                       className="h-7 px-2"
                     >
-                      <Pencil className="h-3 w-3 mr-1" />
+                      <Pencil className="mr-1 h-3 w-3" />
                       Edit
                     </Button>
                   </DialogTrigger>
@@ -337,7 +340,9 @@ export default function BriefCanvas({
                         <label className="text-sm font-medium">Details</label>
                         <Textarea
                           value={editingDescription}
-                          onChange={(e) => setEditingDescription(e.target.value)}
+                          onChange={(e) =>
+                            setEditingDescription(e.target.value)
+                          }
                           placeholder="Brief details"
                           rows={12}
                           className="resize-none"
@@ -370,15 +375,10 @@ export default function BriefCanvas({
                         )}
                       </div>
                       <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={handleCancelEdit}
-                        >
+                        <Button variant="outline" onClick={handleCancelEdit}>
                           Cancel
                         </Button>
-                        <Button onClick={handleSaveEdit}>
-                          Save Changes
-                        </Button>
+                        <Button onClick={handleSaveEdit}>Save Changes</Button>
                       </div>
                     </DialogFooter>
                   </DialogContent>
@@ -391,7 +391,7 @@ export default function BriefCanvas({
                   </p>
                 </div>
                 {briefDescription && (
-                  <p className="text-xs text-gray-600 line-clamp-3">
+                  <p className="line-clamp-3 text-xs text-gray-600">
                     {briefDescription}
                   </p>
                 )}

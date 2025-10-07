@@ -9,7 +9,7 @@ const openrouter = new OpenAI({
 
 // Convert Zod schema to JSON schema for LLM
 function zodSchemaToJsonSchema(
-  schema: typeof caaResponseSchema | typeof adConceptSchema
+  schema: typeof caaResponseSchema | typeof adConceptSchema,
 ): unknown {
   // Check if it's the ad concept schema by checking the schema reference
   if (schema === adConceptSchema) {
@@ -75,13 +75,15 @@ export class LLMClient {
     context: CAAContext;
     schema?: T;
   }): Promise<z.infer<T>> {
-    const schema = options.schema || (caaResponseSchema as T);
+    const schema = options.schema || (caaResponseSchema as unknown as T);
     const fullSystemPrompt = this.buildFullSystemPrompt(
       options.systemPrompt,
       options.context,
     );
 
-    const jsonSchema = zodSchemaToJsonSchema(schema as any);
+    const jsonSchema = zodSchemaToJsonSchema(
+      schema as unknown as typeof caaResponseSchema | typeof adConceptSchema,
+    );
     const enhancedSystemPrompt = `${fullSystemPrompt}
 
 IMPORTANT: You MUST return a valid JSON object that matches exactly this schema:

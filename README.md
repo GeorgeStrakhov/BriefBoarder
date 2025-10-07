@@ -14,6 +14,10 @@ An AI-powered visual moodboard for creating and collaborating on advertising con
 - **Asset Management** - Upload and reuse brand assets (logos, graphics) across projects
 - **Brief Enhancement** - AI-powered brief refinement using Claude
 
+## What's not implemented
+
+- Auth and users. would be easy to add wtih Auth.js or anything else that works with drizzle. Think about how you'd want it to work including liveblocks in terms of real-time collab.
+
 ## Setup
 
 ### Prerequisites
@@ -54,6 +58,7 @@ Visit `http://localhost:3000`
 ## Commands
 
 ### Development
+
 - `pnpm dev` - Start development server with Turbopack
 - `pnpm build` - Build for production
 - `pnpm start` - Start production server
@@ -61,6 +66,7 @@ Visit `http://localhost:3000`
 - `pnpm format` - Format code with Prettier
 
 ### Database
+
 - `pnpm db:generate` - Generate Drizzle migrations from schema
 - `pnpm db:migrate` - Apply pending migrations
 - `pnpm db:studio` - Open Drizzle Studio GUI
@@ -68,12 +74,12 @@ Visit `http://localhost:3000`
 ## Tech Stack
 
 - **Framework**: Next.js 15, React 19
-- **Canvas**: Konva.js for image manipulation
-- **Database**: PostgreSQL with Drizzle ORM
+- **Canvas**: Konva.js for canvas and image manipulation
+- **Database**: PostgreSQL (NEON) with Drizzle ORM
 - **Storage**: Cloudflare R2 (S3-compatible)
 - **AI Models**: Replicate (Imagen 4, Flux, nano-banana)
 - **LLMs**: OpenRouter (Claude, GPT), Groq
-- **Realtime**: Liveblocks for collaboration
+- **Realtime**: Liveblocks for real-time sync and collaboration
 
 ## Documentation
 

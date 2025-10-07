@@ -65,7 +65,7 @@ export interface CreativeApproach {
    */
   generateAutonomousAd(
     context: AdGenerationContext,
-    llm: LLMClient
+    llm: LLMClient,
   ): Promise<AdGenerationResult>;
 
   /**
@@ -114,7 +114,7 @@ export abstract class BaseCreativeApproach implements CreativeApproach {
    */
   async generateAutonomousAd(
     context: AdGenerationContext,
-    llm: LLMClient
+    llm: LLMClient,
   ): Promise<AdGenerationResult> {
     const systemPrompt = `You are a creative director generating an advertising concept.
 
@@ -206,7 +206,9 @@ Provide your response with these fields:
     };
 
     console.log("\n[BaseApproach] Mapped result:", result);
-    console.log(`Using aspect ratio: ${context.aspectRatio || "9:16 (default)"}`);
+    console.log(
+      `Using aspect ratio: ${context.aspectRatio || "9:16 (default)"}`,
+    );
 
     return result;
   }

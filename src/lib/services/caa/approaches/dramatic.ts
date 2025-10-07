@@ -1,5 +1,5 @@
 import { BaseCreativeApproach } from "./base";
-import { CAAContext, CAAResult } from "../types";
+import { CAAContext, CAAResult, CAAResponseType } from "../types";
 import { LLMClient } from "../llm-client";
 
 const DRAMATIC_TECHNIQUES = [
@@ -60,11 +60,11 @@ If user asks to add specific text/copy to an image:
 - Example: noteText: "SUMMER SALE - 50% OFF", enhancedPrompt: "add bold red text saying 'SUMMER SALE - 50% OFF' in a yellow banner at the top"
 - The post-it serves as a reference for the text content, while the image shows it visually`;
 
-    const llmResponse = await llm.callWithStructuredOutput({
+    const llmResponse = (await llm.callWithStructuredOutput({
       systemPrompt,
       userPrompt: context.userPrompt,
       context,
-    });
+    })) as CAAResponseType;
 
     // Transform LLM response into CAAResult
     const result: CAAResult = {

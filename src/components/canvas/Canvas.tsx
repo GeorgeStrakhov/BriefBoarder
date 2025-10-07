@@ -12,9 +12,6 @@ import {
 } from "./handlers/imageOperations";
 import {
   getSelectionBounds as getImageSelectionBounds,
-  createAIPostIt as createAIGeneratedPostIt,
-  generateImageWithPrompt as generateImage,
-  editImagesWithPrompt as editImages,
   handleGenerateImage as processImageGeneration,
 } from "./handlers/generationHandlers";
 import {
@@ -28,7 +25,6 @@ import {
 import { Stage, Layer, Image as KonvaImage, Transformer } from "react-konva";
 import Konva from "konva";
 import { PixelCrop } from "react-image-crop";
-import { transformImageUrl } from "@/lib/utils/image-transform";
 import {
   useCanvasStore,
   setImageRef,
@@ -771,58 +767,6 @@ export default function Canvas({
       throw new Error(data.error || "Upload failed");
     }
   };
-
-  // Helper: Create AI-generated post-it
-  const createAIPostIt = (
-    text: string,
-    position?: { x: number; y: number },
-  ) => {
-    createAIGeneratedPostIt(
-      text,
-      position,
-      addImage,
-      selectedIndices,
-      getAllImageRefs,
-    );
-  };
-
-  // Helper: Generate image with given prompt
-  const generateImageWithPrompt = async (enhancedPrompt: string) => {
-    await generateImage(enhancedPrompt, {
-      images,
-      settings,
-      dimensions,
-      stagePosition,
-      zoom,
-      selectedIndices,
-      addImage,
-      updateImage,
-      setSelectedIndices,
-      deleteSelectedImages,
-      getAllImageRefs,
-    });
-  };
-
-  // Helper: Edit images with given prompt and inputs
-  const editImagesWithPrompt = async (
-    enhancedPrompt: string,
-    imageInputs: string[],
-  ) => {
-    await editImages(enhancedPrompt, imageInputs, {
-      images,
-      settings,
-      dimensions,
-      stagePosition,
-      zoom,
-      selectedIndices,
-      addImage,
-      updateImage,
-      setSelectedIndices,
-      deleteSelectedImages,
-      getAllImageRefs,
-    });
-  };
-
   const handleGenerateImage = async (overridePrompt?: string) => {
     await processImageGeneration(
       overridePrompt ?? prompt,
@@ -882,7 +826,8 @@ export default function Canvas({
 
       try {
         // Get preferred typeface from user preferences
-        const preferredFont = preferences.lastTextFont || "var(--font-geist-sans)";
+        const preferredFont =
+          preferences.lastTextFont || "var(--font-geist-sans)";
 
         // Convert CSS var to actual font name for LLM
         const getFontName = (fontVar: string): string => {
@@ -923,8 +868,10 @@ export default function Canvas({
           img.src = data.imageUrl;
           img.onload = () => {
             // Add to canvas at center
-            const centerX = dimensions.width / 2 / zoom - stagePosition.x / zoom;
-            const centerY = dimensions.height / 2 / zoom - stagePosition.y / zoom;
+            const centerX =
+              dimensions.width / 2 / zoom - stagePosition.x / zoom;
+            const centerY =
+              dimensions.height / 2 / zoom - stagePosition.y / zoom;
 
             // FIXED: Use actual image dimensions, scale proportionally
             // Don't assume aspect ratio - respect what the image generator created
@@ -943,7 +890,12 @@ export default function Canvas({
               adWidth = adHeight * aspectRatio;
             }
 
-            console.log("Image natural dimensions:", img.naturalWidth, "x", img.naturalHeight);
+            console.log(
+              "Image natural dimensions:",
+              img.naturalWidth,
+              "x",
+              img.naturalHeight,
+            );
             console.log("Canvas dimensions:", adWidth, "x", adHeight);
 
             addImage({
@@ -966,11 +918,11 @@ export default function Canvas({
               data.textPlacement === "none"
                 ? " (image only)"
                 : data.textPlacement === "integrated"
-                ? " (text integrated)"
-                : "";
+                  ? " (text integrated)"
+                  : "";
 
             toast.success(
-              `Ad created using "${data.trick.name}" technique!${textInfo}`
+              `Ad created using "${data.trick.name}" technique!${textInfo}`,
             );
           };
         } else {
