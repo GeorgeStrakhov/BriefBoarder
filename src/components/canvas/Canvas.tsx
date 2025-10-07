@@ -775,6 +775,7 @@ export default function Canvas({
       getAllAssets,
       {
         images,
+        getImages: () => useCanvasStore.getState().images, // Get fresh images from store
         settings,
         dimensions,
         stagePosition,

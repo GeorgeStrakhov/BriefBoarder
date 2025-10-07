@@ -6,6 +6,7 @@ import { Asset } from "@/config/assets";
 
 interface GenerationContext {
   images: CanvasImage[];
+  getImages: () => CanvasImage[]; // Get fresh images from store
   settings: {
     imageGenerationModel: string;
     imageEditingModel: string;
@@ -79,11 +80,13 @@ export function createAIPostIt(
     Konva.Image | Konva.Group | Konva.Text | null
   >,
 ) {
+  console.log("[PostIt] Creating AI post-it with text:", text.substring(0, 50) + "...");
   // Smart positioning: top-right of selected images bounding box
   const bounds = getSelectionBounds(selectedIndices, getAllImageRefs);
 
   const posX = position?.x ?? (bounds ? bounds.x + bounds.width + 20 : 200);
   const posY = position?.y ?? (bounds ? bounds.y : 200);
+  console.log("[PostIt] Position calculated:", { posX, posY });
 
   // Create canvas with grey background
   const canvas = document.createElement("canvas");
@@ -91,7 +94,10 @@ export function createAIPostIt(
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  if (!ctx) {
+    console.error("[PostIt] Failed to get canvas context");
+    return;
+  }
 
   ctx.fillStyle = "#E8E8E8"; // Grey for AI post-its
   ctx.fillRect(0, 0, size, size);
@@ -102,8 +108,10 @@ export function createAIPostIt(
   img.src = dataUrl;
 
   img.onload = () => {
+    const postitId = crypto.randomUUID();
+    console.log("[PostIt] Post-it image loaded, adding to canvas with id:", postitId);
     addImage({
-      id: crypto.randomUUID(),
+      id: postitId,
       image: img,
       width: size,
       height: size,
@@ -118,6 +126,7 @@ export function createAIPostIt(
       isAIGenerated: true,
       s3Url: dataUrl,
     });
+    console.log("[PostIt] Post-it added successfully");
   };
 }
 
@@ -126,6 +135,7 @@ export async function generateImageWithPrompt(
   enhancedPrompt: string,
   ctx: GenerationContext,
 ) {
+  console.log("[Generate] Starting generation with prompt:", enhancedPrompt);
   const model = ctx.settings.imageGenerationModel;
   const aspectRatio = ctx.settings.defaultAspectRatio;
 
@@ -135,7 +145,7 @@ export async function generateImageWithPrompt(
   const height = 400;
 
   const imageId = crypto.randomUUID();
-  const newImageIndex = ctx.images.length;
+  console.log("[Generate] Created imageId:", imageId);
 
   // Calculate position in visible viewport
   const centerX = (ctx.dimensions.width / 2 - ctx.stagePosition.x) / ctx.zoom;
@@ -154,6 +164,7 @@ export async function generateImageWithPrompt(
   placeholderImage.src = placeholderPath;
 
   placeholderImage.onload = () => {
+    console.log("[Generate] Placeholder loaded, adding to canvas with id:", imageId);
     ctx.addImage({
       id: imageId,
       image: placeholderImage,
@@ -168,10 +179,12 @@ export async function generateImageWithPrompt(
       scaleX: 1,
       scaleY: 1,
     });
+    console.log("[Generate] Current images array length:", ctx.images.length);
 
     // Generate image in background
     (async () => {
       try {
+        console.log("[Generate] Calling /api/generate");
         const response = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -183,12 +196,14 @@ export async function generateImageWithPrompt(
         });
 
         const data = await response.json();
+        console.log("[Generate] API response:", { ok: response.ok, hasImageUrl: !!data.imageUrl });
 
         if (response.ok) {
           const generatedImg = new window.Image();
           generatedImg.crossOrigin = "anonymous";
           generatedImg.src = data.imageUrl;
           generatedImg.onload = () => {
+            console.log("[Generate] Generated image loaded, finding placeholder by id:", imageId);
             const MAX_SIZE = 500;
             const scale = Math.min(
               1,
@@ -197,25 +212,46 @@ export async function generateImageWithPrompt(
             const scaledWidth = generatedImg.width * scale;
             const scaledHeight = generatedImg.height * scale;
 
-            ctx.updateImage(newImageIndex, {
-              image: generatedImg,
-              s3Url: data.imageUrl,
-              s3Key: data.key,
-              isGenerating: false,
-              width: scaledWidth,
-              height: scaledHeight,
-            });
-            toast.success("Image generated successfully!");
+            // Find image by ID instead of using stale index
+            const currentImages = ctx.getImages(); // Get fresh images from store
+            const imageIndex = currentImages.findIndex((img) => img.id === imageId);
+            console.log("[Generate] Found placeholder at index:", imageIndex, "out of", currentImages.length);
+            if (imageIndex !== -1) {
+              console.log("[Generate] Updating image at index", imageIndex);
+              ctx.updateImage(imageIndex, {
+                image: generatedImg,
+                s3Url: data.imageUrl,
+                s3Key: data.key,
+                isGenerating: false,
+                width: scaledWidth,
+                height: scaledHeight,
+              });
+              toast.success("Image generated successfully!");
+            } else {
+              console.error("[Generate] ERROR: Could not find image with id:", imageId);
+              console.log("[Generate] Available image IDs:", currentImages.map(img => img.id));
+            }
           };
         } else {
-          ctx.setSelectedIndices([newImageIndex]);
-          setTimeout(() => ctx.deleteSelectedImages(), 0);
+          console.error("[Generate] API error:", data.error);
+          // Find and delete by ID
+          const currentImages = ctx.getImages();
+          const imageIndex = currentImages.findIndex((img) => img.id === imageId);
+          if (imageIndex !== -1) {
+            ctx.setSelectedIndices([imageIndex]);
+            setTimeout(() => ctx.deleteSelectedImages(), 0);
+          }
           toast.error(data.error || "Failed to generate image");
         }
       } catch (error) {
-        console.error("Generate error:", error);
-        ctx.setSelectedIndices([newImageIndex]);
-        setTimeout(() => ctx.deleteSelectedImages(), 0);
+        console.error("[Generate] Exception:", error);
+        // Find and delete by ID
+        const currentImages = ctx.getImages();
+        const imageIndex = currentImages.findIndex((img) => img.id === imageId);
+        if (imageIndex !== -1) {
+          ctx.setSelectedIndices([imageIndex]);
+          setTimeout(() => ctx.deleteSelectedImages(), 0);
+        }
         toast.error("Failed to generate image");
       }
     })();
@@ -228,6 +264,7 @@ export async function editImagesWithPrompt(
   imageInputs: string[],
   ctx: GenerationContext,
 ) {
+  console.log("[Edit] Starting edit with prompt:", enhancedPrompt, "imageInputs:", imageInputs.length);
   const editingModel = ctx.settings.imageEditingModel;
 
   // Validate flux-kontext with multiple images
@@ -243,7 +280,7 @@ export async function editImagesWithPrompt(
   const height = 400;
 
   const imageId = crypto.randomUUID();
-  const newImageIndex = ctx.images.length;
+  console.log("[Edit] Created imageId:", imageId);
 
   // Calculate position in visible viewport
   const centerX = (ctx.dimensions.width / 2 - ctx.stagePosition.x) / ctx.zoom;
@@ -260,6 +297,7 @@ export async function editImagesWithPrompt(
   placeholderImage.src = placeholderPath;
 
   placeholderImage.onload = () => {
+    console.log("[Edit] Placeholder loaded, adding to canvas with id:", imageId);
     ctx.addImage({
       id: imageId,
       image: placeholderImage,
@@ -275,10 +313,12 @@ export async function editImagesWithPrompt(
       scaleX: 1,
       scaleY: 1,
     });
+    console.log("[Edit] Current images array length:", ctx.images.length);
 
     // Edit image in background
     (async () => {
       try {
+        console.log("[Edit] Calling /api/edit");
         const response = await fetch("/api/edit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -290,12 +330,14 @@ export async function editImagesWithPrompt(
         });
 
         const data = await response.json();
+        console.log("[Edit] API response:", { ok: response.ok, hasImageUrl: !!data.imageUrl });
 
         if (response.ok) {
           const editedImg = new window.Image();
           editedImg.crossOrigin = "anonymous";
           editedImg.src = data.imageUrl;
           editedImg.onload = () => {
+            console.log("[Edit] Edited image loaded, finding placeholder by id:", imageId);
             const MAX_SIZE = 500;
             const scale = Math.min(
               1,
@@ -304,25 +346,46 @@ export async function editImagesWithPrompt(
             const scaledWidth = editedImg.width * scale;
             const scaledHeight = editedImg.height * scale;
 
-            ctx.updateImage(newImageIndex, {
-              image: editedImg,
-              s3Url: data.imageUrl,
-              s3Key: data.key,
-              isGenerating: false,
-              width: scaledWidth,
-              height: scaledHeight,
-            });
-            toast.success("Image edited successfully!");
+            // Find image by ID instead of using stale index
+            const currentImages = ctx.getImages(); // Get fresh images from store
+            const imageIndex = currentImages.findIndex((img) => img.id === imageId);
+            console.log("[Edit] Found placeholder at index:", imageIndex, "out of", currentImages.length);
+            if (imageIndex !== -1) {
+              console.log("[Edit] Updating image at index", imageIndex);
+              ctx.updateImage(imageIndex, {
+                image: editedImg,
+                s3Url: data.imageUrl,
+                s3Key: data.key,
+                isGenerating: false,
+                width: scaledWidth,
+                height: scaledHeight,
+              });
+              toast.success("Image edited successfully!");
+            } else {
+              console.error("[Edit] ERROR: Could not find image with id:", imageId);
+              console.log("[Edit] Available image IDs:", currentImages.map(img => img.id));
+            }
           };
         } else {
-          ctx.setSelectedIndices([newImageIndex]);
-          setTimeout(() => ctx.deleteSelectedImages(), 0);
+          console.error("[Edit] API error:", data.error);
+          // Find and delete by ID
+          const currentImages = ctx.getImages();
+          const imageIndex = currentImages.findIndex((img) => img.id === imageId);
+          if (imageIndex !== -1) {
+            ctx.setSelectedIndices([imageIndex]);
+            setTimeout(() => ctx.deleteSelectedImages(), 0);
+          }
           toast.error(data.error || "Failed to edit image");
         }
       } catch (error) {
-        console.error("Edit error:", error);
-        ctx.setSelectedIndices([newImageIndex]);
-        setTimeout(() => ctx.deleteSelectedImages(), 0);
+        console.error("[Edit] Exception:", error);
+        // Find and delete by ID
+        const currentImages = ctx.getImages();
+        const imageIndex = currentImages.findIndex((img) => img.id === imageId);
+        if (imageIndex !== -1) {
+          ctx.setSelectedIndices([imageIndex]);
+          setTimeout(() => ctx.deleteSelectedImages(), 0);
+        }
         toast.error("Failed to edit image");
       }
     })();
@@ -401,6 +464,13 @@ export async function handleGenerateImage(
 
       const caaData = await caaResponse.json();
 
+      console.log("[CAA] Response received:", {
+        action: caaData.action,
+        hasPostit: !!caaData.postit,
+        hasEnhancedPrompt: !!caaData.enhancedPrompt,
+        hasImageInputs: !!caaData.imageInputs,
+      });
+
       // Dismiss loading toast
       toast.dismiss("creative-assistant");
 
@@ -411,6 +481,7 @@ export async function handleGenerateImage(
 
       // Handle Creative Assistant response
       if (caaData.action === "answer") {
+        console.log("[CAA] Action: answer - creating post-it only");
         // Create AI post-it with answer (position calculated automatically)
         createAIPostIt(
           caaData.postit.text,
@@ -423,6 +494,7 @@ export async function handleGenerateImage(
       }
 
       if (caaData.postit) {
+        console.log("[CAA] Creating post-it with text:", caaData.postit.text);
         // Create explanatory post-it (position calculated automatically)
         createAIPostIt(
           caaData.postit.text,
@@ -438,9 +510,11 @@ export async function handleGenerateImage(
         caaData.action === "generate" ||
         caaData.action === "generate_and_note"
       ) {
+        console.log("[CAA] Calling generateImageWithPrompt");
         // Use enhanced prompt for generation
         await generateImageWithPrompt(caaData.enhancedPrompt, ctx);
       } else if (caaData.action === "edit") {
+        console.log("[CAA] Calling editImagesWithPrompt");
         // Use enhanced prompt and imageInputs for editing
         await editImagesWithPrompt(
           caaData.enhancedPrompt,
