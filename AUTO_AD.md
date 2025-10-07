@@ -6,9 +6,12 @@ Add a "magic button" that autonomously generates complete ad compositions from a
 - Random advertising trick selection (from 16 classic techniques)
 - Creative approach styling (Simple, Dramatic, future: Bernbach, etc.)
 - Multi-step AI orchestration (concept → image → composition)
-- Final nano-banana compositing (background + logo + headline)
+- Final nano-banana compositing (background + logo + optional text)
 
-**Key Principle**: Creative approaches own the creative vision end-to-end. When a user selects "Dramatic" or "Bernbach", that style should permeate everything—both manual prompt enhancement AND autonomous ad generation.
+**Key Principles**:
+1. Creative approaches own the creative vision end-to-end. When a user selects "Dramatic" or "Bernbach", that style should permeate everything—both manual prompt enhancement AND autonomous ad generation.
+2. Text handling is flexible—not hardcoded. The approach/LLM decides if text should be overlaid, integrated into the image (e.g., "written on a napkin"), or if the image alone tells the story.
+3. Mobile-first: Default to 9:16 aspect ratio for mobile advertising.
 
 ## Architecture Decision
 
@@ -46,6 +49,7 @@ export interface AdGenerationContext {
   briefDescription: string;
   trick: AdvertisingTrick; // Selected advertising trick
   availableAssets: Asset[]; // Logo, brand assets
+  preferredTypeface: string; // From user preferences (e.g., "Geist", "Bebas Neue")
   settings: {
     imageGenerationModel: string;
     imageEditingModel: string;
@@ -54,10 +58,11 @@ export interface AdGenerationContext {
 }
 
 export interface AdGenerationResult {
-  headline: string;
+  headline?: string; // Optional - may not have text
   imagePrompt: string;
   reasoning: string;
-  aspectRatio?: "1:1" | "16:9" | "9:16"; // Default 16:9 for ads
+  textPlacement: "overlay" | "integrated" | "none"; // How text should be handled
+  aspectRatio?: "1:1" | "16:9" | "9:16"; // Default 9:16 for mobile ads
 }
 
 export interface CreativeApproach {
@@ -121,11 +126,19 @@ STYLE GUIDANCE:
 Image style: ${this.getImageStyleGuidance()}
 Copy style: ${this.getCopyStyleGuidance()}
 
+TEXT PLACEMENT OPTIONS:
+You must decide how text should be handled in this ad:
+- "overlay": Text will be overlaid on the image after generation (most common). Provide headline for overlay.
+- "integrated": Text is part of the image itself (e.g., "written on a napkin", "neon sign", "billboard"). Describe text placement in imagePrompt.
+- "none": No text - the image tells the complete story. Leave headline empty.
+
+If using "overlay" and text is needed, preferred typeface for overlays is: ${context.preferredTypeface}
+
 Generate a complete ad concept that:
 1. Uses the "${context.trick.name}" technique authentically
 2. Applies the specified image and copy styles
 3. Communicates the brief's message clearly
-4. Creates a compelling, memorable advertisement`;
+4. Creates a compelling, memorable mobile advertisement`;
 
     const userPrompt = `Brief: "${context.briefName}"
 Description: ${context.briefDescription || "No additional context provided"}
@@ -133,8 +146,9 @@ Description: ${context.briefDescription || "No additional context provided"}
 Create an advertising concept using the "${context.trick.name}" technique with the specified style.
 
 Provide:
-- headline: The main copy/tagline for the ad (keep it punchy)
-- imagePrompt: Detailed description of the visual (background image to generate)
+- textPlacement: "overlay" | "integrated" | "none"
+- headline: If textPlacement is "overlay", provide punchy headline. Otherwise leave empty.
+- imagePrompt: Detailed description of the visual. If textPlacement is "integrated", describe how text appears in the image.
 - reasoning: Brief explanation of how this concept uses the technique`;
 
     const response = await llm.callWithStructuredOutput({
@@ -144,10 +158,11 @@ Provide:
     });
 
     return {
-      headline: response.enhancedPrompt || "", // Reuse field
-      imagePrompt: response.noteText || "", // Reuse field
+      headline: response.enhancedPrompt || undefined,
+      imagePrompt: response.noteText || "",
       reasoning: response.reasoning || "",
-      aspectRatio: "16:9", // Default for ads
+      textPlacement: (response.action as any) || "overlay", // Reuse action field
+      aspectRatio: "9:16", // Default for mobile ads
     };
   }
 }
@@ -208,6 +223,7 @@ export interface GenerateAdOptions {
   briefDescription: string;
   approach: string; // "simple" | "dramatic" | ...
   availableAssets: Asset[];
+  preferredTypeface: string; // From user preferences
   settings: {
     imageGenerationModel: string;
     imageEditingModel: string;
@@ -216,9 +232,10 @@ export interface GenerateAdOptions {
 }
 
 export interface GeneratedAd {
-  imageUrl: string; // Final composited ad
+  imageUrl: string; // Final composited ad (or just background if textPlacement is "integrated" or "none")
   s3Key: string;
-  headline: string;
+  headline?: string; // Optional - may not have text
+  textPlacement: "overlay" | "integrated" | "none";
   trick: {
     id: string;
     name: string;
@@ -245,6 +262,7 @@ export async function generateAd(
       briefDescription: options.briefDescription,
       trick,
       availableAssets: options.availableAssets,
+      preferredTypeface: options.preferredTypeface,
       settings: options.settings,
     },
     llm
@@ -254,18 +272,35 @@ export async function generateAd(
   const backgroundImage = await generateImage({
     prompt: concept.imagePrompt,
     model: options.settings.imageGenerationModel,
-    aspectRatio: concept.aspectRatio || "16:9",
+    aspectRatio: concept.aspectRatio || "9:16",
   });
 
-  // 6. Find logo asset
+  // 6. Determine if we need compositing
+  // If textPlacement is "integrated" or "none", we're done - just return the background
+  if (concept.textPlacement === "integrated" || concept.textPlacement === "none") {
+    return {
+      imageUrl: backgroundImage.imageUrl,
+      s3Key: backgroundImage.key,
+      headline: concept.headline,
+      textPlacement: concept.textPlacement,
+      trick: {
+        id: trick.id,
+        name: trick.name,
+      },
+      reasoning: concept.reasoning,
+    };
+  }
+
+  // 7. Composite with nano-banana (textPlacement === "overlay")
   const logo = options.availableAssets.find((a) => a.name === "logo");
 
-  // 7. Composite final ad using nano-banana
-  const compositePrompt = `Create an advertisement layout:
-- Place the headline text "${concept.headline}" prominently at the top or center
-- Add the logo in the bottom right corner
-- Ensure text is legible with proper contrast
-- Maintain the overall mood and style of the background image`;
+  const compositePrompt = `Create a mobile advertisement layout with:
+${concept.headline ? `- Headline text: "${concept.headline}"` : ""}
+${concept.headline ? `- Use ${options.preferredTypeface} typeface for the headline` : ""}
+${concept.headline ? "- Place headline prominently with excellent legibility and contrast" : ""}
+${logo ? "- Add the logo subtly in the bottom corner" : ""}
+- Maintain the overall mood and style of the background image
+- Ensure professional, polished appearance`;
 
   const imageInputs = [backgroundImage.imageUrl];
   if (logo) {
@@ -282,6 +317,7 @@ export async function generateAd(
     imageUrl: finalAd.imageUrl,
     s3Key: finalAd.key,
     headline: concept.headline,
+    textPlacement: concept.textPlacement,
     trick: {
       id: trick.id,
       name: trick.name,
@@ -326,12 +362,28 @@ export async function POST(req: NextRequest) {
 // Add magic button component
 const MagicAdButton = () => {
   const [isGenerating, setIsGenerating] = useState(false);
+  const { preferences } = usePreferences(); // Get user preferences for typeface
 
   const handleGenerateAd = async () => {
     setIsGenerating(true);
     toast.loading("✨ Creating autonomous ad...", { id: "auto-ad" });
 
     try {
+      // Get preferred typeface from user preferences
+      const preferredFont = preferences.lastTextFont || "var(--font-geist-sans)";
+
+      // Convert CSS var to actual font name for LLM
+      const getFontName = (fontVar: string): string => {
+        if (fontVar.includes("geist-sans")) return "Geist Sans";
+        if (fontVar.includes("inter")) return "Inter";
+        if (fontVar.includes("playfair")) return "Playfair Display";
+        if (fontVar.includes("bebas")) return "Bebas Neue";
+        if (fontVar.includes("caveat")) return "Caveat";
+        if (fontVar.includes("roboto-mono")) return "Roboto Mono";
+        if (fontVar.includes("orbitron")) return "Orbitron";
+        return "Geist Sans";
+      };
+
       const response = await fetch("/api/generate-ad", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -340,6 +392,7 @@ const MagicAdButton = () => {
           briefDescription,
           approach: settings.caaApproach,
           availableAssets: getAllAssets(),
+          preferredTypeface: getFontName(preferredFont),
           settings: {
             imageGenerationModel: settings.imageGenerationModel,
             imageEditingModel: settings.imageEditingModel,
@@ -360,13 +413,17 @@ const MagicAdButton = () => {
           const centerX = dimensions.width / 2 / zoom - stagePosition.x / zoom;
           const centerY = dimensions.height / 2 / zoom - stagePosition.y / zoom;
 
+          // Calculate dimensions for 9:16 aspect ratio
+          const adWidth = 400; // Base width
+          const adHeight = (adWidth * 16) / 9; // 9:16 = portrait
+
           addImage({
             id: crypto.randomUUID(),
             image: img,
-            width: 600, // Scale down for canvas
-            height: 337.5, // 16:9 aspect ratio
-            x: centerX - 300,
-            y: centerY - 168.75,
+            width: adWidth,
+            height: adHeight,
+            x: centerX - adWidth / 2,
+            y: centerY - adHeight / 2,
             rotation: 0,
             scaleX: 1,
             scaleY: 1,
@@ -376,7 +433,13 @@ const MagicAdButton = () => {
             prompt: `Auto-generated ad using "${data.trick.name}" technique`,
           });
 
-          toast.success(`Ad created using "${data.trick.name}" technique!`);
+          const textInfo = data.textPlacement === "none"
+            ? " (image only)"
+            : data.textPlacement === "integrated"
+            ? " (text integrated)"
+            : "";
+
+          toast.success(`Ad created using "${data.trick.name}" technique!${textInfo}`);
         };
       } else {
         toast.error(data.error || "Failed to generate ad");
@@ -429,7 +492,9 @@ AdGeneratorService.generateAd()
 │ 3. approach.generateAutonomousAd()  │
 │    - Uses trick description          │
 │    - Applies approach style guidance │
-│    - Generates: headline,            │
+│    - Uses preferred typeface         │
+│    - Decides textPlacement           │
+│    - Generates: headline (optional), │
 │      imagePrompt, reasoning          │
 └──────────────┬──────────────────────┘
                ↓
@@ -437,17 +502,25 @@ AdGeneratorService.generateAd()
 │ 4. Generate background image         │
 │    - Use concept.imagePrompt         │
 │    - Use imageGenerationModel        │
+│    - 9:16 aspect ratio (mobile)      │
 └──────────────┬──────────────────────┘
                ↓
 ┌─────────────────────────────────────┐
-│ 5. Composite with nano-banana        │
+│ 5. Check textPlacement               │
+│    - "integrated"/"none" → done      │
+│    - "overlay" → continue to step 6  │
+└──────────────┬──────────────────────┘
+               ↓
+┌─────────────────────────────────────┐
+│ 6. Composite with nano-banana        │
+│    (only if textPlacement="overlay") │
 │    - Background image                │
-│    - Logo asset                      │
-│    - Headline text overlay           │
+│    - Logo asset (optional)           │
+│    - Headline text using typeface    │
 └──────────────┬──────────────────────┘
                ↓
 ┌─────────────────────────────────────┐
-│ 6. Return final ad image             │
+│ 7. Return final ad image             │
 │    - Upload to S3                    │
 │    - Place on canvas                 │
 └─────────────────────────────────────┘
@@ -497,9 +570,10 @@ const APPROACHES: Record<string, CreativeApproach> = {
 1. **Manual trick selection**: Dropdown to choose specific technique
 2. **Multi-ad generation**: "Generate 5 variations"
 3. **Trick-specific approaches**: "Anti-Ad Approach" that always uses reverse psychology
-4. **Custom aspect ratios**: Square (1:1) for social, portrait (9:16) for stories
+4. **Custom aspect ratios**: Square (1:1) for social, landscape (16:9) for web
 5. **Asset variations**: Try different logos, color schemes
 6. **A/B testing**: Generate multiple concepts, let user pick
+7. **Typeface library**: Expand beyond user preferences to include ad-specific fonts
 
 ## Implementation Plan
 
@@ -537,38 +611,75 @@ const APPROACHES: Record<string, CreativeApproach> = {
 ## Technical Considerations
 
 ### LLM Response Schema
-Reuse existing `caaResponseSchema` or create new schema:
+Extend existing `caaResponseSchema` to support ad generation:
 ```typescript
 export const adConceptSchema = z.object({
-  headline: z.string().describe("Punchy advertising headline/tagline"),
-  imagePrompt: z.string().describe("Detailed visual description for image generation"),
-  reasoning: z.string().describe("How this concept uses the advertising technique"),
+  textPlacement: z.enum(["overlay", "integrated", "none"])
+    .describe("How text should be handled: overlay=add after, integrated=part of image, none=no text"),
+  headline: z.string().optional()
+    .describe("Headline text (required only if textPlacement is 'overlay')"),
+  imagePrompt: z.string()
+    .describe("Detailed visual description. If textPlacement is 'integrated', describe how text appears in image"),
+  reasoning: z.string()
+    .describe("How this concept uses the advertising technique"),
 });
 ```
 
 ### Nano-banana Compositing
+- Only runs if textPlacement is "overlay"
 - Max 8 input images (background + logo + optional assets)
-- Supports text overlay via prompt
-- Aspect ratio: "match_input_image" or specific
+- Supports text overlay via prompt with typeface guidance
+- Aspect ratio: "match_input_image" (maintains 9:16)
 - Output format: PNG for transparency support
+- Typeface preference passed from user preferences (CSS var → font name mapping)
+
+### Typeface Handling
+User preferences store CSS variables (e.g., `var(--font-geist-sans)`), but LLM needs human-readable names:
+- `--font-geist-sans` → "Geist Sans"
+- `--font-bebas` → "Bebas Neue"
+- `--font-playfair` → "Playfair Display"
+- etc.
+
+Mapping done in Canvas component before API call.
+
+### Text Placement Strategies
+1. **overlay**: Text added via nano-banana after image generation
+   - Most common case
+   - Uses user's preferred typeface
+   - Requires compositing step
+2. **integrated**: Text is part of the generated image
+   - Examples: "written on napkin", "neon sign", "billboard in scene"
+   - No compositing needed
+   - Skips nano-banana step
+3. **none**: No text, image tells complete story
+   - Pure visual communication
+   - No headline needed
+   - No compositing needed
 
 ### Error Handling
 - LLM failures: Retry with simpler prompt
 - Image generation timeout: Show error, don't block
-- Compositing failures: Fall back to plain image + post-it note with headline
-- No logo asset: Generate ad without logo
+- Compositing failures (textPlacement="overlay"): Fall back to plain image + post-it note with headline
+- No logo asset: Generate ad without logo (common case)
+- Invalid textPlacement: Default to "overlay"
 
 ### Performance
-- Full flow: ~30-60 seconds (concept + 2 image generations)
-- Show progress: "Generating concept..." → "Creating background..." → "Compositing..."
-- Consider: Generate background + composite in parallel if possible
+- **With overlay**: ~40-70 seconds (concept + 2 image generations)
+- **Without overlay** (integrated/none): ~20-40 seconds (concept + 1 image generation)
+- Show progress: "Generating concept..." → "Creating image..." → "Adding text..." (if overlay)
+- Optimization: Skip compositing when textPlacement is "integrated" or "none"
 
 ## Success Criteria
 
 ✅ User clicks button → complete ad appears on canvas
 ✅ Ad reflects selected approach style (dramatic → dramatic imagery/copy)
 ✅ Random advertising trick used authentically
-✅ Logo included in composition
-✅ Headline legible and well-placed
-✅ 16:9 aspect ratio suitable for advertising
+✅ 9:16 aspect ratio suitable for mobile advertising
+✅ Text placement decision made intelligently:
+  - Overlay: clean text with preferred typeface
+  - Integrated: text naturally part of image
+  - None: powerful visual storytelling without text
+✅ Logo included when appropriate (optional, not forced)
+✅ Preferred typeface respected for overlay text
 ✅ Consistent experience with manual CAA usage
+✅ Performance: faster generation when compositing not needed (integrated/none)
