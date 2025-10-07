@@ -7,6 +7,7 @@ interface DropContext {
   containerRef: React.RefObject<HTMLDivElement | null>;
   zoom: number;
   images: CanvasImage[];
+  getImages: () => CanvasImage[]; // Get fresh images from store
   addImage: (image: Omit<CanvasImage, "zIndex">) => void;
   updateImage: (index: number, updates: Partial<CanvasImage>) => void;
   setTextDropPosition: (pos: { x: number; y: number } | null) => void;
@@ -172,7 +173,6 @@ export async function handleDrop(e: React.DragEvent, ctx: DropContext) {
         const scaledHeight = img.height * scale;
 
         const imageId = crypto.randomUUID();
-        const newImageIndex = ctx.images.length;
 
         // Add image to canvas immediately (optimistic UI)
         ctx.addImage({
@@ -202,41 +202,67 @@ export async function handleDrop(e: React.DragEvent, ctx: DropContext) {
           const data = await response.json();
 
           if (response.ok) {
-            // Update image with S3 info
-            ctx.updateImage(newImageIndex, {
-              s3Url: data.s3Url,
-              s3Key: data.s3Key,
-              uploading: false,
-            });
+            // Find image by ID instead of using stale index
+            const currentImages = ctx.getImages();
+            const imageIndex = currentImages.findIndex(
+              (img) => img.id === imageId,
+            );
+            if (imageIndex !== -1) {
+              // Update image with S3 info
+              ctx.updateImage(imageIndex, {
+                s3Url: data.s3Url,
+                s3Key: data.s3Key,
+                uploading: false,
+              });
 
-            // Generate description in background
-            (async () => {
-              try {
-                const describeResponse = await fetch("/api/describe-image", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ imageUrl: data.s3Url }),
-                });
-
-                if (describeResponse.ok) {
-                  const describeData = await describeResponse.json();
-                  // Update image with generated prompt
-                  ctx.updateImage(newImageIndex, {
-                    prompt: describeData.description,
+              // Generate description in background
+              (async () => {
+                try {
+                  const describeResponse = await fetch("/api/describe-image", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ imageUrl: data.s3Url }),
                   });
+
+                  if (describeResponse.ok) {
+                    const describeData = await describeResponse.json();
+                    // Find image by ID again for nested async
+                    const nestedImages = ctx.getImages();
+                    const nestedIndex = nestedImages.findIndex(
+                      (img) => img.id === imageId,
+                    );
+                    if (nestedIndex !== -1) {
+                      // Update image with generated prompt
+                      ctx.updateImage(nestedIndex, {
+                        prompt: describeData.description,
+                      });
+                    }
+                  }
+                } catch (error) {
+                  console.error("Failed to generate description:", error);
+                  // Don't show error to user, just log it
                 }
-              } catch (error) {
-                console.error("Failed to generate description:", error);
-                // Don't show error to user, just log it
-              }
-            })();
+              })();
+            }
           } else {
             console.error("Upload failed:", data.error);
-            ctx.updateImage(newImageIndex, { uploading: false });
+            const currentImages = ctx.getImages();
+            const imageIndex = currentImages.findIndex(
+              (img) => img.id === imageId,
+            );
+            if (imageIndex !== -1) {
+              ctx.updateImage(imageIndex, { uploading: false });
+            }
           }
         } catch (error) {
           console.error("Upload error:", error);
-          ctx.updateImage(newImageIndex, { uploading: false });
+          const currentImages = ctx.getImages();
+          const imageIndex = currentImages.findIndex(
+            (img) => img.id === imageId,
+          );
+          if (imageIndex !== -1) {
+            ctx.updateImage(imageIndex, { uploading: false });
+          }
         }
       };
     };

@@ -237,6 +237,7 @@ export default function Canvas({
       containerRef,
       zoom,
       images,
+      getImages: () => useCanvasStore.getState().images, // Get fresh images from store
       addImage,
       updateImage,
       setTextDropPosition,
@@ -696,13 +697,19 @@ export default function Canvas({
     await upscaleImage(
       selectedIndices,
       images,
+      () => useCanvasStore.getState().images, // Get fresh images from store
       updateImage,
       settings.imageUpscalingModel,
     );
   };
 
   const handleRemoveBackground = async () => {
-    await removeImageBackground(selectedIndices, images, updateImage);
+    await removeImageBackground(
+      selectedIndices,
+      images,
+      () => useCanvasStore.getState().images, // Get fresh images from store
+      updateImage,
+    );
   };
 
   const handleDownloadBoard = async (includeReactions: boolean) => {

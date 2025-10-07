@@ -4,6 +4,7 @@ import { CanvasImage } from "@/stores/canvasStore";
 export async function handleUpscale(
   selectedIndices: number[],
   images: CanvasImage[],
+  getImages: () => CanvasImage[], // Get fresh images from store
   updateImage: (index: number, updates: Partial<CanvasImage>) => void,
   upscalingModel: string,
 ) {
@@ -12,6 +13,8 @@ export async function handleUpscale(
   const imageIndex = selectedIndices[0];
   const imageData = images[imageIndex];
   if (!imageData?.s3Url) return;
+
+  const imageId = imageData.id; // Store ID for later lookup
 
   // Check if already upscaling
   if (imageData.isUpscaling) {
@@ -40,8 +43,15 @@ export async function handleUpscale(
       upscaledImg.crossOrigin = "anonymous";
       upscaledImg.src = data.imageUrl;
       upscaledImg.onload = () => {
+        // Find image by ID in case array changed
+        const currentImages = getImages();
+        const currentIndex = currentImages.findIndex(
+          (img) => img.id === imageId,
+        );
+        if (currentIndex === -1) return; // Image was deleted
+
         // Update image with upscaled version, keeping transforms
-        updateImage(imageIndex, {
+        updateImage(currentIndex, {
           image: upscaledImg,
           s3Url: data.imageUrl,
           s3Key: data.key,
@@ -51,12 +61,22 @@ export async function handleUpscale(
         toast.success("Image upscaled successfully!");
       };
     } else {
-      updateImage(imageIndex, { isUpscaling: false });
+      // Find image by ID for error case too
+      const currentImages = getImages();
+      const currentIndex = currentImages.findIndex((img) => img.id === imageId);
+      if (currentIndex !== -1) {
+        updateImage(currentIndex, { isUpscaling: false });
+      }
       toast.error(data.error || "Failed to upscale image");
     }
   } catch (error) {
     console.error("Upscale error:", error);
-    updateImage(imageIndex, { isUpscaling: false });
+    // Find image by ID for error case
+    const currentImages = getImages();
+    const currentIndex = currentImages.findIndex((img) => img.id === imageId);
+    if (currentIndex !== -1) {
+      updateImage(currentIndex, { isUpscaling: false });
+    }
     toast.error("Failed to upscale image");
   }
 }
@@ -64,6 +84,7 @@ export async function handleUpscale(
 export async function handleRemoveBackground(
   selectedIndices: number[],
   images: CanvasImage[],
+  getImages: () => CanvasImage[], // Get fresh images from store
   updateImage: (index: number, updates: Partial<CanvasImage>) => void,
 ) {
   if (selectedIndices.length !== 1) return;
@@ -71,6 +92,8 @@ export async function handleRemoveBackground(
   const imageIndex = selectedIndices[0];
   const imageData = images[imageIndex];
   if (!imageData?.s3Url) return;
+
+  const imageId = imageData.id; // Store ID for later lookup
 
   // Check if already removing background
   if (imageData.isRemovingBackground) {
@@ -98,8 +121,15 @@ export async function handleRemoveBackground(
       processedImg.crossOrigin = "anonymous";
       processedImg.src = data.imageUrl;
       processedImg.onload = () => {
+        // Find image by ID in case array changed
+        const currentImages = getImages();
+        const currentIndex = currentImages.findIndex(
+          (img) => img.id === imageId,
+        );
+        if (currentIndex === -1) return; // Image was deleted
+
         // Update image with processed version, keeping transforms
-        updateImage(imageIndex, {
+        updateImage(currentIndex, {
           image: processedImg,
           s3Url: data.imageUrl,
           s3Key: data.key,
@@ -109,12 +139,22 @@ export async function handleRemoveBackground(
         toast.success("Background removed successfully!");
       };
     } else {
-      updateImage(imageIndex, { isRemovingBackground: false });
+      // Find image by ID for error case too
+      const currentImages = getImages();
+      const currentIndex = currentImages.findIndex((img) => img.id === imageId);
+      if (currentIndex !== -1) {
+        updateImage(currentIndex, { isRemovingBackground: false });
+      }
       toast.error(data.error || "Failed to remove background");
     }
   } catch (error) {
     console.error("Remove background error:", error);
-    updateImage(imageIndex, { isRemovingBackground: false });
+    // Find image by ID for error case
+    const currentImages = getImages();
+    const currentIndex = currentImages.findIndex((img) => img.id === imageId);
+    if (currentIndex !== -1) {
+      updateImage(currentIndex, { isRemovingBackground: false });
+    }
     toast.error("Failed to remove background");
   }
 }
